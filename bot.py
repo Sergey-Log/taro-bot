@@ -2,7 +2,6 @@
 import logging
 import sqlite3
 import requests
-import json
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -26,28 +25,22 @@ def health_check():
     return "✅ v5.0"
 
 @app.route('/webhook', methods=['POST'])
-async def webhook():
-    """Вебхук для автоматического зачисления криптовалюты"""
+def webhook():
     try:
         data = request.get_json()
-        
         payment_id = data.get('payment_id')
         status = data.get('payment_status')
         tx_hash = data.get('tx_hash', 'N/A')
-        
         if status == 'confirmed' and payment_id:
             user_id, pack_size = complete_payment(payment_id, tx_hash)
             if user_id:
-                # Отправляем уведомление пользователю
-                await application.bot.send_message(
-                    chat_id=user_id,
-                    text=f"✅ Оплата получена! ✨\n\n"
-                         f"💰 На ваш баланс зачислено {pack_size} раскладов.\n"
-                         f"🧾 Транзакция: {tx_hash[:10]}...\n\n"
-                         f"🎴 Готовы к новому гаданию?"
-                )
+                def send_notification():
+                    application.bot.send_message(
+                        chat_id=user_id,
+                        text=f"✅ Оплата получена! ✨\n\n💰 На ваш баланс зачислено {pack_size} раскладов.\n🧾 Транзакция: {tx_hash[:10]}...\n\n🎴 Готовы к новому гаданию?"
+                    )
+                threading.Thread(target=send_notification).start()
                 return "OK", 200
-        
         return "Ignored", 200
     except Exception as e:
         print(f"Ошибка вебхука: {e}")
@@ -57,7 +50,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     args = context.args
     add_user(user.id, user.username, user.first_name)
-    
     if args:
         try:
             referrer_id = int(args[0])
@@ -70,10 +62,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         )
                     except: pass
         except: pass
-    
     balance = get_balance(user.id)
     message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ Ваш баланс: {balance} раскладов"
-    
     keyboard = [
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
@@ -82,7 +72,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
     if update.message:
         await update.message.reply_text(text=message, reply_markup=reply_markup)
     else:
@@ -91,27 +80,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text=message, reply_markup=reply_markup)
 
 async def create_crypto_invoice(user_id, pack_size, currency="USDT"):
-    """Создать инвойс для оплаты криптовалютой"""
     prices = {1: 100, 3: 285, 7: 630, 13: 1105}
     amount_rub = prices.get(pack_size, 100)
-    
-    # Проверка наличия ключа
     if not NOWPAYMENTS_KEY or NOWPAYMENTS_KEY == "YOUR_API_KEY_HERE":
         print("❌ ОШИБКА: NOWPAYMENTS_KEY не установлен в переменных окружения!")
         return None, None, None, None
-    
-    # Проверка наличия вебхука
     webhook_url = os.getenv("WEBHOOK_URL")
     if not webhook_url:
         print("❌ ОШИБКА: WEBHOOK_URL не установлен в переменных окружения!")
         return None, None, None, None
-    
     try:
         headers = {
             "X-API-Key": NOWPAYMENTS_KEY,
             "Content-Type": "application/json"
         }
-        
         payload = {
             "price_amount": amount_rub,
             "price_currency": "RUB",
@@ -121,30 +103,25 @@ async def create_crypto_invoice(user_id, pack_size, currency="USDT"):
             "success_url": "https://t.me/cardnotlie_bot",
             "ipn_callback_url": webhook_url
         }
-        
         response = requests.post(
             "https://api.nowpayments.io/v1/invoice",
             headers=headers,
             json=payload,
             timeout=10
         )
-        
         if response.status_code == 201:
             invoice = response.json()
             payment_id = invoice['id']
             invoice_url = invoice['invoice_url']
             pay_amount = invoice['pay_amount']
             pay_currency = invoice['pay_currency']
-            
             create_payment(user_id, amount_rub, pack_size, payment_id, pay_currency, pay_amount)
-            
             print(f"✅ Инвойс создан: {payment_id} | Сумма: {pay_amount} {pay_currency}")
             return payment_id, invoice_url, pay_amount, pay_currency
         else:
             error_msg = response.json().get('message', 'Неизвестная ошибка')
             print(f"❌ Ошибка NOWPayments ({response.status_code}): {error_msg}")
             return None, None, None, None
-            
     except requests.exceptions.Timeout:
         print("❌ Таймаут при создании инвойса (проверьте интернет)")
         return None, None, None, None
@@ -156,25 +133,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
-    
     if query.data == 'do_tarot':
         balance = get_balance(user_id)
-        
         if balance > 0:
             decrease_balance(user_id, 1)
             cards = get_random_cards(3)
             reading = format_reading(cards)
             new_balance = get_balance(user_id)
-            
-            if 'pending_readings' not in context.user_data:
+            if 'pending_readings' not in context.user_
                 context.user_data['pending_readings'] = {}
             context.user_data['pending_readings'][user_id] = (cards, reading)
-            
-            await context.bot.send_message(
-                chat_id=query.message.chat_id,
-                text=reading
-            )
-            
+            await context.bot.send_message(chat_id=query.message.chat_id, text=reading)
             keyboard = [
                 [InlineKeyboardButton("💾 Сохранить расклад", callback_data='save_last_reading')],
                 [InlineKeyboardButton("🔄 Ещё один расклад", callback_data='do_tarot')],
@@ -198,13 +167,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text="💫 У вас закончились расклады.\n💰 Пополните баланс или получите бонусы!",
                 reply_markup=reply_markup
             )
-    
     elif query.data == 'save_last_reading':
         if 'pending_readings' in context.user_data and user_id in context.user_data['pending_readings']:
             cards, reading_text = context.user_data['pending_readings'][user_id]
             slots = get_saved_slots(user_id)
             free_slots = [i for i in range(1, 4) if i not in slots]
-            
             if free_slots:
                 slot = save_reading(user_id, cards, reading_text, free_slots[0])
                 message = f"✅ Расклад сохранён в ячейку #{slot}!"
@@ -222,7 +189,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
             await query.edit_message_text(text="❌ Нет расклада для сохранения. Сначала сделайте расклад!")
-    
     elif query.data.startswith('delete_slot_'):
         slot_num = int(query.data.split('_')[2])
         if delete_saved_reading(user_id, slot_num):
@@ -232,25 +198,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data == 'saved_readings':
         slots = get_saved_slots(user_id)
         occupied = len(slots)
         free = 3 - occupied
-        
         message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n📦 Доступно ячеек для сохранения: {occupied}/3\n"
         if free > 0:
             message += f"✨ Свободно ячеек: {free}\n\n"
         else:
             message += "⚠️ Все ячейки заняты. Чтобы сохранить новый расклад, сначала удалите старый.\n\n"
-        
         if not slots:
             message += "У вас пока нет сохранённых раскладов.\nСделайте расклад и нажмите «💾 Сохранить»!"
             keyboard = [[InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')], [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(text=message, reply_markup=reply_markup)
             return
-        
         keyboard = []
         for slot_num in sorted(slots.keys()):
             timestamp = slots[slot_num]
@@ -258,7 +220,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data.startswith('view_slot_'):
         slot_num = int(query.data.split('_')[2])
         reading = get_saved_reading(user_id, slot_num)
@@ -270,7 +231,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
             await query.edit_message_text(text="❌ Расклад не найден.")
-    
     elif query.data == 'balance':
         balance = get_balance(user_id)
         message = (
@@ -289,7 +249,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data == 'referral':
         ref_link = f"https://t.me/cardnotlie_bot?start={user_id}"
         referral_count = get_referral_count(user_id)
@@ -304,22 +263,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data == 'buy_packs':
-    message = (
-        "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
-        "\nВыберите удобный способ:\n"
-        "\n💎 Криптовалюта — автоматическое зачисление после оплаты ✅\n"
-        "🏦 Банковская карта — требуется ручная проверка скриншота ⏳"
-    )
-    keyboard = [
-        [InlineKeyboardButton("💎 Криптовалюта (авто)", callback_data='crypto_packs')],
-        [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
-        [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+        message = (
+            "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
+            "\nВыберите удобный способ:\n"
+            "\n💎 Криптовалюта — автоматическое зачисление после оплаты ✅\n"
+            "🏦 Банковская карта — требуется ручная проверка скриншота ⏳"
+        )
+        keyboard = [
+            [InlineKeyboardButton("💎 Криптовалюта (авто)", callback_data='crypto_packs')],
+            [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
+            [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
     elif query.data == 'crypto_packs':
         message = (
             "💎 ПАКЕТЫ КРИПТОВАЛЮТОЙ 💎\n"
@@ -338,11 +295,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data.startswith('crypto_'):
         pack_size = int(query.data.split('_')[1])
         payment_id, invoice_url, pay_amount, pay_currency = await create_crypto_invoice(user_id, pack_size, "USDT")
-        
         if payment_id:
             message = (
                 f"💎 ОПЛАТА КРИПТОВАЛЮТОЙ 💎\n"
@@ -363,7 +318,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
             await query.edit_message_text(text="❌ Ошибка создания платежа. Попробуйте позже или обратитесь в поддержку @jobphone_admin")
-    
     elif query.data == 'card_packs':
         message = (
             "💳 ПАКЕТЫ РАСКЛАДОВ 💳\n"
@@ -386,14 +340,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data.startswith('buy_'):
         pack_size = int(query.data.split('_')[1])
         prices = {1: 100, 3: 285, 7: 630, 13: 1105}
         price = prices[pack_size]
         discounts = {1: "0%", 3: "5%", 7: "10%", 13: "15%"}
         discount = discounts[pack_size]
-        
         message = (
             f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n"
             f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
@@ -415,7 +367,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data == 'terms' or query.data == 'terms_button':
         message = (
             "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
@@ -432,7 +383,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Назад к оплате", callback_data='buy_packs')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data == 'subscribe':
         subscribed = check_subscribed(user_id)
         if subscribed:
@@ -451,7 +401,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data == 'confirm_subscribe':
         subscribed = check_subscribed(user_id)
         if subscribed:
@@ -462,7 +411,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data == 'help':
         message = (
             "❓ ПОМОЩЬ ❓\n"
@@ -487,7 +435,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
     elif query.data == 'back_to_menu':
         balance = get_balance(user_id)
         message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ Ваш баланс: {balance} раскладов"
@@ -506,20 +453,17 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     slots = get_saved_slots(user_id)
     occupied = len(slots)
     free = 3 - occupied
-    
     message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n\n📦 Доступно ячеек для сохранения: {occupied}/3\n"
     if free > 0:
         message += f"✨ Свободно ячеек: {free}\n\n"
     else:
         message += "⚠️ Все ячейки заняты.\n\n"
-    
     if not slots:
         message += "У вас пока нет сохранённых раскладов.\nСделайте расклад и нажмите «💾 Сохранить»!"
         keyboard = [[InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(text=message, reply_markup=reply_markup)
         return
-    
     keyboard = []
     for slot_num in sorted(slots.keys()):
         timestamp = slots[slot_num]
@@ -551,6 +495,7 @@ def get_referral_count(user_id):
     return result[0] if result else 0
 
 def main():
+    global application
     init_db()
     if not TOKEN:
         print("❌ Токен не установлен")
