@@ -73,8 +73,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reading = format_reading(cards)
             new_balance = get_balance(user_id)
             
-            # ИСПРАВЛЕНО: правильная работа с user_data (было: context.user_)
-            if 'pending_readings' not in context.user_
+            if 'pending_readings' not in context.user_data:
                 context.user_data['pending_readings'] = {}
             context.user_data['pending_readings'][user_id] = (cards, reading)
             
@@ -404,7 +403,7 @@ def main():
     if not TOKEN:
         print("❌ Токен не установлен")
         return
-    print("✅ Бот запущен v4.4 (полная версия с исправленной ошибкой user_data)")
+    print("✅ Бот запущен v4.4 (исправлены отступы и синтаксис)")
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("history", history_command))
