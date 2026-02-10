@@ -1,4 +1,4 @@
-import sqlite3
+п»їimport sqlite3
 
 def init_db():
     conn = sqlite3.connect('tarot_bot.db')
@@ -7,7 +7,7 @@ def init_db():
     cursor.execute('CREATE TABLE IF NOT EXISTS referrals (id INTEGER PRIMARY KEY AUTOINCREMENT, referrer_id INTEGER, referred_id INTEGER)')
     conn.commit()
     conn.close()
-    print("? База данных инициализирована")
+    print("? пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
 
 def add_user(user_id, username, first_name):
     conn = sqlite3.connect('tarot_bot.db')

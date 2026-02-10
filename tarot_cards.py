@@ -1,4 +1,4 @@
-import random
+﻿import random
 
 MAJOR_ARCANA = [
     ("Шут", "Новые начинания, спонтанность, вера в будущее"),
