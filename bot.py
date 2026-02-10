@@ -1,6 +1,5 @@
 import os
 import logging
-print('? НОВАЯ ВЕРСИЯ v2.0 ЗАГРУЖЕНА')
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -8,7 +7,7 @@ from flask import Flask
 import threading
 
 from database import init_db, add_user, check_free_used, mark_free_used, add_referral, get_referral_count
-from tarot_cards import get_random_cards, format_reading, get_single_card
+from tarot_cards import get_random_cards, format_reading
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
@@ -20,7 +19,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "? Бот работает! Таро бот @cardnotlie_bot v2.0"
+    return "? Бот работает! Таро бот @cardnotlie_bot v2.1"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -33,28 +32,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if referrer_id != user.id:
                 if add_referral(referrer_id, user.id):
                     try:
-                        await context.bot.send_message(chat_id=referrer_id, text=f"?? Отлично! Ваш друг {user.first_name} присоединился!
-Вы получили +1 к реферальному счёту!")
+                        await context.bot.send_message(chat_id=referrer_id, text=f"?? Отлично! Ваш друг {user.first_name} присоединился!\nВы получили +1 к реферальному счёту!")
                     except: pass
         except: pass
     
     referral_count = get_referral_count(user.id)
-    message = "?? *ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО!* ??
-? Я — ваш личный таролог.
-
-*?? ЧТО Я МОГУ:*
-• Расклады на любые вопросы
-• Анализ ситуации
-• Прогнозы
-
-*?? ПЕРВЫЙ РАСКЛАД — БЕСПЛАТНО!*
-?? Реферальный баланс: *{referral_count}* раскладов
-
-Нажмите кнопку ниже!".format(referral_count=referral_count)
+    message = f"?? ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! ??\n\n? Я — ваш личный таролог.\n\n?? ЧТО Я МОГУ:\n• Расклады на любые вопросы\n• Анализ ситуации\n• Прогнозы на будущее\n\n?? ПЕРВЫЙ РАСКЛАД — БЕСПЛАТНО!\n?? Ваш реферальный баланс: {referral_count} бесплатных раскладов\n\n?? Чтобы начать, нажмите кнопку ниже!"
     
-    keyboard = [[InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')], [InlineKeyboardButton("?? Рефералы", callback_data='referral')], [InlineKeyboardButton("? Помощь", callback_data='help')]]
+    keyboard = [
+        [InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton("?? Реферальная программа", callback_data='referral')],
+        [InlineKeyboardButton("?? Назад", callback_data='back_to_menu')]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(text=message, parse_mode='MarkdownV2', reply_markup=reply_markup)
+    await update.message.reply_text(text=message, reply_markup=reply_markup)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -67,29 +58,27 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cards = get_random_cards(3)
             reading = format_reading(cards)
             mark_free_used(user_id)
-            keyboard = [[InlineKeyboardButton("?? Ещё один", callback_data='do_tarot')]]
-            await query.edit_message_text(text=reading, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode='MarkdownV2')
+            keyboard = [[InlineKeyboardButton("?? Ещё один расклад", callback_data='do_tarot')]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(text=reading, reply_markup=reply_markup)
         else:
-            keyboard = [[InlineKeyboardButton("?? 100?", callback_data='pay_button')], [InlineKeyboardButton("?? Друг", callback_data='referral')], [InlineKeyboardButton("?? Назад", callback_data='back_to_menu')]]
-            await query.edit_message_text(text="?? Расклады закончились.
-?? Следующий: 100 ?", reply_markup=InlineKeyboardMarkup(keyboard))
+            keyboard = [
+                [InlineKeyboardButton("?? Оплатить 100?", callback_data='pay_button')],
+                [InlineKeyboardButton("?? Пригласить друга", callback_data='referral')],
+                [InlineKeyboardButton("?? Назад в меню", callback_data='back_to_menu')]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(text="?? У вас закончились бесплатные расклады.\n\n?? Стоимость следующего расклада: 100 ?", reply_markup=reply_markup)
     
     elif query.data == 'back_to_menu':
-        referral_count = get_referral_count(user_id)
-        message = "?? *ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО!* ??
-? Ваш таролог.
-
-*?? ПЕРВЫЙ РАСКЛАД — БЕСПЛАТНО!*
-?? Баланс: *{referral_count}* раскладов".format(referral_count=referral_count)
-        keyboard = [[InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')], [InlineKeyboardButton("?? Рефералы", callback_data='referral')], [InlineKeyboardButton("? Помощь", callback_data='help')]]
-        await query.edit_message_text(text=message, parse_mode='MarkdownV2', reply_markup=InlineKeyboardMarkup(keyboard))
+        await start(update, context)
 
 def main():
     init_db()
     if not TOKEN:
         print("? Токен не установлен")
         return
-    print("? Бот запущен v2.0")
+    print("? Бот запущен v2.1 (без ошибок форматирования)")
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
