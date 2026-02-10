@@ -13,6 +13,7 @@ def init_db():
             first_name TEXT,
             free_used BOOLEAN DEFAULT 0,
             referral_count INTEGER DEFAULT 0,
+            subscribed BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -27,12 +28,13 @@ def init_db():
         )
     ''')
     
-    # Таблица истории раскладов (НОВОЕ!)
+    # Таблица истории раскладов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS readings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
             cards TEXT,
+            interpretation TEXT,
             positions TEXT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -110,8 +112,8 @@ def get_referral_count(user_id):
     conn.close()
     return result[0] if result else 0
 
-def add_reading(user_id, cards, positions=None):
-    """Добавить расклад в историю (НОВОЕ!)"""
+def add_reading(user_id, cards, interpretation, positions=None):
+    """Добавить расклад в историю"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
@@ -119,20 +121,20 @@ def add_reading(user_id, cards, positions=None):
     positions_str = ','.join(positions) if positions else 'Прошлое,Настоящее,Будущее'
     
     cursor.execute('''
-        INSERT INTO readings (user_id, cards, positions)
-        VALUES (?, ?, ?)
-    ''', (user_id, cards_str, positions_str))
+        INSERT INTO readings (user_id, cards, interpretation, positions)
+        VALUES (?, ?, ?, ?)
+    ''', (user_id, cards_str, interpretation, positions_str))
     
     conn.commit()
     conn.close()
 
 def get_readings_history(user_id, limit=5):
-    """Получить историю раскладов пользователя (НОВОЕ!)"""
+    """Получить историю раскладов пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT cards, positions, timestamp 
+        SELECT cards, interpretation, positions, timestamp 
         FROM readings 
         WHERE user_id = ? 
         ORDER BY timestamp DESC 
@@ -142,3 +144,24 @@ def get_readings_history(user_id, limit=5):
     results = cursor.fetchall()
     conn.close()
     return results
+
+def mark_subscribed(user_id):
+    """Отметить пользователя как подписавшегося на канал"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('UPDATE users SET subscribed = 1, referral_count = referral_count + 3 WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+    return True
+
+def check_subscribed(user_id):
+    """Проверить, подписан ли пользователь на канал"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    
+    cursor.execute('SELECT subscribed FROM users WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+    
+    conn.close()
+    return result[0] if result else 0

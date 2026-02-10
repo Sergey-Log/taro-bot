@@ -6,7 +6,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 from flask import Flask
 import threading
 
-from database import init_db, add_user, check_free_used, mark_free_used, add_referral, get_referral_count, add_reading, get_readings_history
+from database import init_db, add_user, check_free_used, mark_free_used, add_referral, get_referral_count, add_reading, get_readings_history, mark_subscribed, check_subscribed
 from tarot_cards import get_random_cards, format_reading, get_single_card
 
 load_dotenv()
@@ -19,10 +19,10 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v3.0"
+    return "✅ v3.1"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик команды /start — только для текстовых сообщений"""
+    """Обработчик команды /start"""
     user = update.effective_user
     args = context.args
     add_user(user.id, user.username, user.first_name)
@@ -42,32 +42,33 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except: pass
     
     referral_count = get_referral_count(user.id)
+    subscribed = check_subscribed(user.id)
+    
     message = (
         "🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n\n"
         "✨ Я — ваш личный таролог, готовый раскрыть тайны будущего.\n"
         "💫 ЧТО Я МОГУ:\n"
         "• Мгновенные расклады на любые вопросы 💫\n"
-        "• Глубокий анализ ситуации 🔮\n"
-        "• Прогнозы на будущее 🔮\n"
+        "• Глубокий анализ ситуации в любви и карьере ❤️‍🔥💼\n"
+        "• Персональные советы от карт 🌟\n"
         "• История всех ваших раскладов 📚\n\n"
         "🌟 ПЕРВЫЙ РАСКЛАД — БЕСПЛАТНО!\n"
-        f"🎁 Ваш реферальный баланс: {referral_count} бесплатных раскладов"
+        f"🎁 Ваш баланс: {referral_count} бесплатных раскладов"
     )
     
     keyboard = [
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
-        [InlineKeyboardButton("💫 Реферальная программа", callback_data='referral')],
+        [InlineKeyboardButton("💫 Рефералы (+1 за друга)", callback_data='referral')],
+        [InlineKeyboardButton("📺 Подписка (+3 расклада)", callback_data='subscribe')],
         [InlineKeyboardButton("📚 История раскладов", callback_data='history')],
-        [InlineKeyboardButton("💳 Оплата", callback_data='pay_info')],
+        [InlineKeyboardButton("💳 Оплата (100₽)", callback_data='pay_info')],
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Отправляем сообщение ТОЛЬКО если это текстовое сообщение (/start)
     if update.message:
         await update.message.reply_text(text=message, reply_markup=reply_markup)
     else:
-        # Если вызван из кнопки — редактируем текущее сообщение
         query = update.callback_query
         if query:
             await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -80,19 +81,50 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if query.data == 'do_tarot':
         free_used = check_free_used(user_id)
-        if not free_used:
+        referral_count = get_referral_count(user_id)
+        
+        # Проверяем общий баланс (бесплатный + рефералы)
+        has_free = (not free_used) or (referral_count > 0)
+        
+        if has_free:
+            # Если есть бесплатный расклад — используем его
+            if not free_used:
+                mark_free_used(user_id)
+            else:
+                # Уменьшаем счётчик рефералов
+                conn = sqlite3.connect('tarot_bot.db')
+                cursor = conn.cursor()
+                cursor.execute('UPDATE users SET referral_count = referral_count - 1 WHERE user_id = ?', (user_id,))
+                conn.commit()
+                conn.close()
+            
+            # Делаем расклад
             cards = get_random_cards(3)
             reading = format_reading(cards)
-            mark_free_used(user_id)
-            add_reading(user_id, cards)  # Сохраняем в историю
-            keyboard = [[InlineKeyboardButton("🔄 Ещё один расклад", callback_data='do_tarot')]]
+            add_reading(user_id, cards, reading)  # Сохраняем полный текст в историю
+            
+            # Отправляем расклад КАК НОВОЕ СООБЩЕНИЕ (не редактируем старое!)
+            await query.message.reply_text(text=reading)
+            
+            # Отправляем кнопки отдельным сообщением
+            keyboard = [
+                [InlineKeyboardButton("🔄 Ещё один расклад", callback_data='do_tarot')],
+                [InlineKeyboardButton("📚 История раскладов", callback_data='history')],
+                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+            ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(text=reading, reply_markup=reply_markup)
+            await query.message.reply_text(
+                text="💫 Что дальше?",
+                reply_markup=reply_markup
+            )
         else:
+            # Нет бесплатных раскладов — показываем оплату
             keyboard = [
                 [InlineKeyboardButton("💳 Оплатить 100₽", callback_data='pay_button')],
-                [InlineKeyboardButton("🎁 Пригласить друга", callback_data='referral')],
-                [InlineKeyboardButton("⬅️ Назад в меню", callback_data='back_to_menu')]
+                [InlineKeyboardButton("📚 История раскладов", callback_data='history')],
+                [InlineKeyboardButton("🎁 Пригласить друга (+1)", callback_data='referral')],
+                [InlineKeyboardButton("📺 Подписаться (+3)", callback_data='subscribe')],
+                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(
@@ -107,11 +139,41 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🎁 РЕФЕРАЛЬНАЯ ПРОГРАММА 🎁\n\n"
             f"✨ Ваша реферальная ссылка:\n"
             f"{ref_link}\n\n"
-            f"📊 Ваш счёт: {referral_count} приглашённых друзей\n"
-            f"💫 За каждого друга — 1 бесплатный расклад!\n\n"
-            f"📤 Просто отправьте ссылку друзьям — когда они начнут пользоваться ботом, вы получите бонус!"
+            f"📊 Ваш счёт: {referral_count} бесплатных раскладов\n"
+            f"💫 За каждого друга, который начнёт пользоваться ботом, вы получите +1 расклад!\n\n"
+            f"📤 Просто отправьте ссылку друзьям или в соцсети!"
         )
-        keyboard = [[InlineKeyboardButton("⬅️ Назад в меню", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'subscribe':
+        subscribed = check_subscribed(user_id)
+        if subscribed:
+            message = "✅ Вы уже подписаны на наш канал!\n💫 Бонус +3 расклада уже начислен на ваш счёт."
+        else:
+            message = (
+                "📺 ПОДПИСКА НА КАНАЛ 📺\n\n"
+                "Подпишитесь на наш эзотерический канал и получите +3 бесплатных расклада!\n\n"
+                "✨ Канал: https://t.me/+5q7VJBPU4_QyMDky\n\n"
+                "После подписки нажмите кнопку ниже:"
+            )
+        keyboard = [
+            [InlineKeyboardButton("📺 Перейти в канал", url="https://t.me/+5q7VJBPU4_QyMDky")],
+            [InlineKeyboardButton("✅ Я подписался (+3 расклада)", callback_data='confirm_subscribe')],
+            [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'confirm_subscribe':
+        subscribed = check_subscribed(user_id)
+        if subscribed:
+            message = "✅ Вы уже получили бонус за подписку!"
+        else:
+            mark_subscribed(user_id)
+            message = "🎉 Ура! Вы подписались на канал!\n✨ Бонус +3 бесплатных расклада начислен на ваш счёт.\n💫 Теперь у вас есть дополнительные возможности для гадания!"
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
@@ -121,12 +183,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = "📚 ИСТОРИЯ РАСКЛАДОВ 📚\n\nУ вас пока нет сохранённых раскладов.\nСделайте первый расклад прямо сейчас!"
         else:
             message = "📚 ИСТОРИЯ ВАШИХ РАСКЛАДОВ 📚\n\n"
-            for i, (cards, positions, timestamp) in enumerate(readings, 1):
-                cards_list = cards.split(',')
-                message += f"{i}. {', '.join(cards_list)}\n"
-                message += f"   📅 {timestamp[:16]}\n\n"
-            message += "💫 Хотите сделать новый расклад? Нажмите кнопку ниже!"
-        keyboard = [[InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')], [InlineKeyboardButton("⬅️ Назад в меню", callback_data='back_to_menu')]]
+            for i, (cards, interpretation, positions, timestamp) in enumerate(readings, 1):
+                message += f"Расклад #{i} | 📅 {timestamp[:16]}\n"
+                message += f"━━━━━━━━━━━━━━━━━━━━\n"
+                message += interpretation + "\n\n"
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
@@ -140,10 +201,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• Анализ в любви и карьере ❤️‍🔥💼\n"
             "• Персональный совет от таролога 🌟\n"
             "• Сохранение в историю раскладов 📚\n"
-            "• Безлимитное количество раскладов после оплаты!\n"
             "\nНажмите кнопку ниже, чтобы оплатить:"
         )
-        keyboard = [[InlineKeyboardButton("💳 Оплатить 100₽", callback_data='pay_button')], [InlineKeyboardButton("⬅️ Назад в меню", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("💳 Оплатить 100₽", callback_data='pay_button')], [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
@@ -152,19 +212,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💳 ОПЛАТА РАСКЛАДА (100 ₽) 💳\n\n"
             "✨ Выберите удобный способ оплаты:\n"
             "\n📱 СБП (мгновенный перевод):\n"
-            "▫️ Банк: Тинькофф / Сбербанк / ВТБ / Альфа-Банк и другие с СБП\n"
-            "▫️ Получатель: [ВАШЕ ИМЯ]\n"
-            "▫️ Телефон: +7 999 123-45-67\n"
+            "▫️ Банк: Райффайзен банк\n"
+            "▫️ Получатель: Сергей\n"
+            "▫️ Номер карты: \n"
             "▫️ Сумма: 100 ₽\n"
             "▫️ Комментарий: tarot_{user_id}\n"
             "\n🪙 Криптовалюта (USDT):\n"
             "▫️ Сеть: TRC20 (Tron)\n"
-            "▫️ Адрес: TABC1234567890abcdef1234567890\n"
+            "▫️ Адрес: \n"
             "▫️ Сумма: 1 USDT\n"
-            "▫️ Мемо/Тег: tarot_{user_id}\n"
+            "▫️ Мемо: tarot_{user_id}\n"
             "\n✅ ПОСЛЕ ОПЛАТЫ:\n"
-            "1. Сделайте скриншот перевода или скопируйте хэш транзакции\n"
-            "2. Напишите мне с пометкой «ОПЛАТА»\n"
+            "1. Сделайте скриншот перевода или скопируйте хэш транзакции.\n"
+            "2. Напишите мне с пометкой «ОПЛАТА».\n"
             "3. Я сделаю для вас расклад в течение 10 минут! ✨"
         ).format(user_id=user_id)
         keyboard = [[InlineKeyboardButton("⬅️ Назад", callback_data='pay_info')]]
@@ -178,46 +238,47 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "1. Нажмите /start для начала работы.\n"
             "2. Нажмите кнопку «Сделать расклад».\n"
             "3. Получите мгновенный расклад Таро с подробной интерпретацией.\n"
-            "4. Нажмите «Ещё один расклад» для повторного гадания.\n\n"
-            "💫 БЕСПЛАТНЫЙ РАСКЛАД:\n"
+            "4. Нажмите «Ещё один расклад» для повторного гадания.\n"
+            "\n💫 БЕСПЛАТНЫЙ РАСКЛАД:\n"
             "• Первый расклад — абсолютно бесплатно!\n"
             "• Дополнительные расклады — через реферальную программу или оплату.\n"
-            "• За каждого приглашённого друга вы получаете 1 бесплатный расклад.\n\n"
-            "🎁 РЕФЕРАЛЬНАЯ ПРОГРАММА:\n"
+            "• За каждого приглашённого друга вы получаете +1 бесплатный расклад.\n"
+            "• За подписку на канал — +3 бесплатных расклада.\n"
+            "\n🎁 РЕФЕРАЛЬНАЯ ПРОГРАММА:\n"
             "• Пригласите друга по вашей ссылке.\n"
-            "• Когда друг начнёт пользоваться ботом — вы получите +1 бесплатный расклад.\n"
-            "• Поделитесь ссылкой в соцсетях и получайте неограниченное количество раскладов!\n\n"
-            "💳 ПЛАТНЫЕ РАСКЛАДЫ:\n"
+            "• Когда друг начнёт пользоваться ботом — вы получите +1 расклад.\n"
+            "• Поделитесь ссылкой в соцсетях и получайте неограниченное количество раскладов!\n"
+            "\n💳 ПЛАТНЫЕ РАСКЛАДЫ:\n"
             "• Стоимость: 100 ₽ за расклад.\n"
             "• Оплата через СБП или криптовалюту (USDT).\n"
             "• После оплаты напишите мне с подтверждением.\n"
             "• Расклад будет готов в течение 10 минут.\n"
             "\n📞 СВЯЗЬ:\n"
-            "Если у вас есть вопросы или предложения — напишите мне: @ваш_никнейм"
+            "Если у вас есть вопросы — напишите: @cardnotlie"
         )
-        keyboard = [[InlineKeyboardButton("⬅️ Назад в меню", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'back_to_menu':
-        # ИСПРАВЛЕНО: не вызываем start(), а отправляем сообщение напрямую
         referral_count = get_referral_count(user_id)
         message = (
             "🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n\n"
             "✨ Я — ваш личный таролог, готовый раскрыть тайны будущего.\n"
             "💫 ЧТО Я МОГУ:\n"
             "• Мгновенные расклады на любые вопросы 💫\n"
-            "• Глубокий анализ ситуации 🔮\n"
-            "• Прогнозы на будущее 🔮\n"
+            "• Глубокий анализ ситуации в любви и карьере ❤️‍🔥💼\n"
+            "• Персональные советы от карт 🌟\n"
             "• История всех ваших раскладов 📚\n"
             "\n🌟 ПЕРВЫЙ РАСКЛАД — БЕСПЛАТНО!\n"
-            f"🎁 Ваш реферальный баланс: {referral_count} бесплатных раскладов"
+            f"🎁 Ваш баланс: {referral_count} бесплатных раскладов"
         )
         keyboard = [
             [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
-            [InlineKeyboardButton("💫 Реферальная программа", callback_data='referral')],
+            [InlineKeyboardButton("💫 Рефералы (+1 за друга)", callback_data='referral')],
+            [InlineKeyboardButton("📺 Подписка (+3 расклада)", callback_data='subscribe')],
             [InlineKeyboardButton("📚 История раскладов", callback_data='history')],
-            [InlineKeyboardButton("💳 Оплата", callback_data='pay_info')],
+            [InlineKeyboardButton("💳 Оплата (100₽)", callback_data='pay_info')],
             [InlineKeyboardButton("❓ Помощь", callback_data='help')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -236,11 +297,10 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     message = "📚 ИСТОРИЯ ВАШИХ РАСКЛАДОВ 📚\n\n"
-    for i, (cards, positions, timestamp) in enumerate(readings, 1):
-        cards_list = cards.split(',')
-        message += f"{i}. {', '.join(cards_list)}\n"
-        message += f"   📅 {timestamp[:16]}\n\n"
-    message += "💫 Хотите сделать новый расклад? Напишите /start!"
+    for i, (cards, interpretation, positions, timestamp) in enumerate(readings, 1):
+        message += f"Расклад #{i} | 📅 {timestamp[:16]}\n"
+        message += f"━━━━━━━━━━━━━━━━━━━━\n"
+        message += interpretation + "\n\n"
     
     await update.message.reply_text(text=message)
 
@@ -249,7 +309,7 @@ def main():
     if not TOKEN:
         print("❌ Токен не установлен")
         return
-    print("✅ Бот запущен v3.0 (история, оплата, красивые тексты)")
+    print("✅ Бот запущен v3.1 (расклады остаются в чате, подписка +3, красивая оплата)")
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("history", history_command))
