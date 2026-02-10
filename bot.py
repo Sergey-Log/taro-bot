@@ -20,7 +20,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v4.3"
+    return "✅ v4.4"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /start"""
@@ -81,7 +81,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             new_balance = get_balance(user_id)
             
             # Сохраняем расклад во временное хранилище пользователя
-            if 'pending_readings' not in context.user_data:
+            if 'pending_readings' not in context.user_
                 context.user_data['pending_readings'] = {}
             context.user_data['pending_readings'][user_id] = (cards, reading)
             
@@ -160,11 +160,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'saved_readings':
-        slots = get_saved_slots(user.id)
+        slots = get_saved_slots(user_id)
         occupied = len(slots)
         free = 3 - occupied
         
-        message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n\n📦 Доступно ячеек: {occupied}/3\n"
+        message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n\n📦 Доступно ячеек для сохранения: {occupied}/3\n"
         if free > 0:
             message += f"✨ Свободно ячеек: {free}\n\n"
         else:
@@ -208,8 +208,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"• Купите пакет раскладов со скидкой 💳"
         )
         keyboard = [
-            [InlineKeyboardButton("💫 Пригласить друга", callback_data='referral')],
             [InlineKeyboardButton("💳 Купить расклады", callback_data='buy_packs')],
+            [InlineKeyboardButton("💫 Пригласить друга", callback_data='referral')],
             [InlineKeyboardButton("📺 Подписаться (+3)", callback_data='subscribe')],
             [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
         ]
@@ -218,7 +218,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif query.data == 'referral':
         ref_link = f"https://t.me/cardnotlie_bot?start={user_id}"
-        referral_count = get_referral_count(user_id) if hasattr(database, 'get_referral_count') else 0
+        referral_count = get_referral_count(user_id)
         message = (
             f"🎁 РЕФЕРАЛЬНАЯ ПРОГРАММА 🎁\n\n"
             f"✨ Ваша реферальная ссылка:\n"
@@ -266,17 +266,37 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
             f"\n🏦 Реквизиты для оплаты:\n"
             f"▫️ Банк: Райффайзенбанк\n"
+            f"▫️ Номер карты: \n"
             f"▫️ Получатель: Сергей Л.\n"
             f"▫️ Сумма: {price} ₽\n"
             f"\n✅ ПОСЛЕ ОПЛАТЫ:\n"
             f"1. Сделайте скриншот перевода.\n"
             f"2. Напишите в поддержку @jobphone_admin с пометкой «ОПЛАТА».\n"
-            f"3. Мы начислим {pack_size} раскладов на ваш баланс в течение 10 минут! ✨"
+            f"3. Мы начислим {pack_size} раскладов на ваш баланс в течение 10 минут! ✨\n"
+            f"\nℹ️ Подробнее об условиях оплаты: /terms"
         )
         keyboard = [
             [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='buy_packs')],
+            [InlineKeyboardButton("📄 Условия оплаты", callback_data='terms')],
             [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
         ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'terms' or query.data == 'terms_button':
+        message = (
+            "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n\n"
+            "💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+            "Расклады Таро предоставляются в развлекательных целях.\n"
+            "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n\n"
+            "✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+            "• Оплата добровольная и необязательная\n"
+            "• Расклады носят развлекательный характер\n"
+            "• Вы совершаете платёж по собственной воле без принуждения\n"
+            "• Возврат средств не предусмотрен (добровольный донат)\n\n"
+            "✨ Спасибо за поддержку проекта! 💫"
+        )
+        keyboard = [[InlineKeyboardButton("⬅️ Назад к оплате", callback_data='buy_packs')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
@@ -327,8 +347,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• За подписку: +3 расклада.\n"
             "• Покупка пакетов со скидкой до 15%.\n"
             "\n💳 ОПЛАТА:\n"
-            "• На карту Райффайзенбанк.\n"
-            "• После оплаты напишите @jobphone_admin с пометкой «ОПЛАТА»."
+            "• Оплата на карту Райффайзенбанк (добровольный донат).\n"
+            "• После оплаты напишите @jobphone_admin с пометкой «ОПЛАТА».\n"
+            "• Подробнее об условиях: /terms\n"
+            "\n📄 СОГЛАСИЕ:\n"
+            "Любая оплата является добровольным донатом в поддержку проекта.\n"
+            "Расклады носят развлекательный характер.\n"
+            "Подробнее: /terms"
         )
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -354,7 +379,7 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     occupied = len(slots)
     free = 3 - occupied
     
-    message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n\n📦 Доступно ячеек: {occupied}/3\n"
+    message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n\n📦 Доступно ячеек для сохранения: {occupied}/3\n"
     if free > 0:
         message += f"✨ Свободно ячеек: {free}\n\n"
     else:
@@ -374,8 +399,24 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
+async def terms_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /terms — условия оплаты"""
+    message = (
+        "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n\n"
+        "💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+        "Расклады Таро предоставляются в развлекательных целях.\n"
+        "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n\n"
+        "✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+        "• Оплата добровольная и необязательная\n"
+        "• Расклады носят развлекательный характер\n"
+        "• Вы совершаете платёж по собственной воле без принуждения\n"
+        "• Возврат средств не предусмотрен (добровольный донат)\n\n"
+        "✨ Спасибо за поддержку проекта! 💫"
+    )
+    await update.message.reply_text(text=message)
+
 def get_referral_count(user_id):
-    """Получить количество рефералов пользователя (для обратной совместимости)"""
+    """Получить количество рефералов пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT COUNT(*) FROM referrals WHERE referrer_id = ?', (user_id,))
@@ -388,10 +429,11 @@ def main():
     if not TOKEN:
         print("❌ Токен не установлен")
         return
-    print("✅ Бот запущен v4.3 (безопасная оплата, кнопка Пригласить друга, 3 ячейки)")
+    print("✅ Бот запущен v4.4 (финальная версия: безопасная оплата, правильный порядок кнопок, условия доната)")
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("history", history_command))
+    application.add_handler(CommandHandler("terms", terms_command))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.run_polling()
 
