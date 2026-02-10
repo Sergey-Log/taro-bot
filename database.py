@@ -5,13 +5,13 @@ def init_db():
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
-    # Таблица пользователей (упрощённая: один счётчик баланса)
+    # Таблица пользователей (баланс раскладов)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
             username TEXT,
             first_name TEXT,
-            balance INTEGER DEFAULT 1,  -- 1 бесплатный расклад при регистрации
+            balance INTEGER DEFAULT 1,
             subscribed BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -27,24 +27,25 @@ def init_db():
         )
     ''')
     
-    # Таблица истории раскладов
+    # Таблица СОХРАНЁННЫХ раскладов (НОВОЕ! — 3 ячейки на пользователя)
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS readings (
+        CREATE TABLE IF NOT EXISTS saved_readings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
+            slot INTEGER,  -- ячейка 1, 2 или 3
             cards TEXT,
             interpretation TEXT,
-            positions TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, slot)
         )
     ''')
     
     conn.commit()
     conn.close()
-    print("✅ База данных инициализирована (баланс вместо free_used)")
+    print("✅ База данных инициализирована (система ячеек для сохранения)")
 
 def add_user(user_id, username, first_name):
-    """Добавить пользователя в базу (с балансом = 1)"""
+    """Добавить пользователя в базу"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
@@ -75,7 +76,7 @@ def decrease_balance(user_id, amount=1):
     cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ? AND balance >= ?', (amount, user_id, amount))
     conn.commit()
     conn.close()
-    return cursor.rowcount > 0  # True если баланс был уменьшен
+    return cursor.rowcount > 0
 
 def increase_balance(user_id, amount=1):
     """Увеличить баланс на указанное количество"""
@@ -87,23 +88,16 @@ def increase_balance(user_id, amount=1):
     conn.close()
 
 def add_referral(referrer_id, referred_id):
-    """Добавить реферала (+1 к балансу реферера)"""
+    """Добавить реферала (+1 к балансу)"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
-    # Проверяем, не был ли пользователь уже приглашён
     cursor.execute('SELECT id FROM referrals WHERE referred_id = ?', (referred_id,))
     if cursor.fetchone():
         conn.close()
         return False
     
-    # Добавляем реферала
-    cursor.execute('''
-        INSERT INTO referrals (referrer_id, referred_id)
-        VALUES (?, ?)
-    ''', (referrer_id, referred_id))
-    
-    # Увеличиваем баланс рефереру
+    cursor.execute('INSERT INTO referrals (referrer_id, referred_id) VALUES (?, ?)', (referrer_id, referred_id))
     cursor.execute('UPDATE users SET balance = balance + 1 WHERE user_id = ?', (referrer_id,))
     
     conn.commit()
@@ -111,7 +105,7 @@ def add_referral(referrer_id, referred_id):
     return True
 
 def mark_subscribed(user_id):
-    """Отметить подписку на канал (+3 к балансу)"""
+    """Отметить подписку (+3 к балансу)"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
@@ -121,7 +115,7 @@ def mark_subscribed(user_id):
     return True
 
 def check_subscribed(user_id):
-    """Проверить, подписан ли пользователь на канал"""
+    """Проверить подписку"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
@@ -131,52 +125,78 @@ def check_subscribed(user_id):
     conn.close()
     return result[0] if result else 0
 
-def add_reading(user_id, cards, interpretation, positions=None):
-    """Добавить расклад в историю"""
+# ===== НОВЫЕ ФУНКЦИИ ДЛЯ СИСТЕМЫ ЯЧЕЕК =====
+
+def get_saved_slots(user_id):
+    """Получить список занятых ячеек пользователя (1, 2, 3)"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
+    cursor.execute('SELECT slot, timestamp FROM saved_readings WHERE user_id = ? ORDER BY slot ASC', (user_id,))
+    results = cursor.fetchall()
+    conn.close()
+    
+    # Возвращаем словарь: {слот: дата}
+    return {row[0]: row[1][:16] for row in results}
+
+def save_reading(user_id, cards, interpretation, slot=None):
+    """
+    Сохранить расклад в ячейку
+    
+    Args:
+        user_id: ID пользователя
+        cards: список карт [(название, интерпретация), ...]
+        interpretation: полный текст расклада
+        slot: ячейка (1-3), если None — найти первую свободную
+    
+    Returns:
+        номер ячейки или None если нет свободных мест
+    """
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    
+    # Если слот не указан — найти первую свободную ячейку
+    if slot is None:
+        occupied = get_saved_slots(user_id).keys()
+        for i in range(1, 4):
+            if i not in occupied:
+                slot = i
+                break
+    
+    # Если нет свободных ячеек — вернуть None
+    if slot is None or slot not in [1, 2, 3]:
+        conn.close()
+        return None
+    
+    # Сохраняем расклад (заменяем существующий в этой ячейке)
     cards_str = ','.join([card[0] for card in cards])
-    positions_str = ','.join(positions) if positions else 'Прошлое,Настоящее,Будущее'
     
     cursor.execute('''
-        INSERT INTO readings (user_id, cards, interpretation, positions)
+        INSERT OR REPLACE INTO saved_readings (user_id, slot, cards, interpretation)
         VALUES (?, ?, ?, ?)
-    ''', (user_id, cards_str, interpretation, positions_str))
+    ''', (user_id, slot, cards_str, interpretation))
     
     conn.commit()
     conn.close()
+    return slot
 
-def get_reading_dates(user_id, limit=10):
-    """Получить уникальные даты раскладов пользователя"""
+def get_saved_reading(user_id, slot):
+    """Получить сохранённый расклад из ячейки"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
-    cursor.execute('''
-        SELECT DISTINCT DATE(timestamp) as date_str, COUNT(*) as count
-        FROM readings 
-        WHERE user_id = ?
-        GROUP BY DATE(timestamp)
-        ORDER BY date_str DESC
-        LIMIT ?
-    ''', (user_id, limit))
-    
-    results = cursor.fetchall()
+    cursor.execute('SELECT cards, interpretation, timestamp FROM saved_readings WHERE user_id = ? AND slot = ?', (user_id, slot))
+    result = cursor.fetchone()
     conn.close()
-    return results
+    
+    return result  # (cards_str, interpretation, timestamp) или None
 
-def get_readings_by_date(user_id, date_str):
-    """Получить все расклады за указанную дату"""
+def delete_saved_reading(user_id, slot):
+    """Удалить расклад из ячейки"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
-    cursor.execute('''
-        SELECT cards, interpretation, positions, timestamp 
-        FROM readings 
-        WHERE user_id = ? AND DATE(timestamp) = ?
-        ORDER BY timestamp DESC
-    ''', (user_id, date_str))
-    
-    results = cursor.fetchall()
+    cursor.execute('DELETE FROM saved_readings WHERE user_id = ? AND slot = ?', (user_id, slot))
+    conn.commit()
     conn.close()
-    return results
+    return cursor.rowcount > 0
