@@ -95,14 +95,22 @@ async def create_crypto_invoice(user_id, pack_size, currency="USDT"):
     prices = {1: 100, 3: 285, 7: 630, 13: 1105}
     amount_rub = prices.get(pack_size, 100)
     
+    # Проверка наличия ключа
+    if not NOWPAYMENTS_KEY or NOWPAYMENTS_KEY == "YOUR_API_KEY_HERE":
+        print("❌ ОШИБКА: NOWPAYMENTS_KEY не установлен в переменных окружения!")
+        return None, None, None, None
+    
+    # Проверка наличия вебхука
+    webhook_url = os.getenv("WEBHOOK_URL")
+    if not webhook_url:
+        print("❌ ОШИБКА: WEBHOOK_URL не установлен в переменных окружения!")
+        return None, None, None, None
+    
     try:
         headers = {
             "X-API-Key": NOWPAYMENTS_KEY,
             "Content-Type": "application/json"
         }
-        
-        # ⚠️ ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ ДОМЕН (после первого деплоя на Railway):
-        webhook_url = "taro-bot-production-0561.up.railway.app"
         
         payload = {
             "price_amount": amount_rub,
@@ -117,7 +125,8 @@ async def create_crypto_invoice(user_id, pack_size, currency="USDT"):
         response = requests.post(
             "https://api.nowpayments.io/v1/invoice",
             headers=headers,
-            json=payload
+            json=payload,
+            timeout=10
         )
         
         if response.status_code == 201:
@@ -129,13 +138,18 @@ async def create_crypto_invoice(user_id, pack_size, currency="USDT"):
             
             create_payment(user_id, amount_rub, pack_size, payment_id, pay_currency, pay_amount)
             
+            print(f"✅ Инвойс создан: {payment_id} | Сумма: {pay_amount} {pay_currency}")
             return payment_id, invoice_url, pay_amount, pay_currency
         else:
-            print(f"Ошибка NOWPayments: {response.text}")
+            error_msg = response.json().get('message', 'Неизвестная ошибка')
+            print(f"❌ Ошибка NOWPayments ({response.status_code}): {error_msg}")
             return None, None, None, None
             
+    except requests.exceptions.Timeout:
+        print("❌ Таймаут при создании инвойса (проверьте интернет)")
+        return None, None, None, None
     except Exception as e:
-        print(f"Ошибка создания инвойса: {e}")
+        print(f"❌ Исключение при создании инвойса: {type(e).__name__} - {e}")
         return None, None, None, None
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -292,17 +306,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'buy_packs':
-        message = (
-            "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
-            "\nВыберите удобный способ:"
-        )
-        keyboard = [
-            [InlineKeyboardButton("💎 Криптовалюта (авто)", callback_data='crypto_packs')],
-            [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
-            [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    message = (
+        "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
+        "\nВыберите удобный способ:\n"
+        "\n💎 Криптовалюта — автоматическое зачисление после оплаты ✅\n"
+        "🏦 Банковская карта — требуется ручная проверка скриншота ⏳"
+    )
+    keyboard = [
+        [InlineKeyboardButton("💎 Криптовалюта (авто)", callback_data='crypto_packs')],
+        [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
+        [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'crypto_packs':
         message = (
