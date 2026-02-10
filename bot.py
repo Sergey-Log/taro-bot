@@ -152,7 +152,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reading = format_reading(cards)
             new_balance = get_balance(user_id)
             
-            if 'pending_readings' not in context.user_
+            if 'pending_readings' not in context.user_data:
                 context.user_data['pending_readings'] = {}
             context.user_data['pending_readings'][user_id] = (cards, reading)
             
