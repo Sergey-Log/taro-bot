@@ -50,16 +50,18 @@ def format_reading(cards, positions=None):
         отформатированный текст расклада
     """
     if positions is None:
-        positions = ["🃏 Прошлое", "🃏 Настоящее", "🃏 Будущее"]
+        positions = ["🎴 *Прошлое*", "🎴 *Настоящее*", "🎴 *Будущее*"]
     
-    result = "🔮 ВАШ РАСКЛАД ТАРО ГОТОВ 🔮\n\n"
+    result = "🔮 *ВАШ РАСКЛАД ТАРО ГОТОВ* 🔮\\n\\n"
     
     for pos, (name, meaning) in zip(positions, cards):
-        result += f"{pos}\n"
-        result += f"✨ {name}\n"
-        result += f"💫 {meaning}\n\n"
+        # Экранируем спецсимволы для MarkdownV2
+        safe_meaning = meaning.replace('-', '\\-').replace('.', '\\.').replace('(', '\\(').replace(')', '\\)')
+        result += f"{pos}\\n"
+        result += f"*✨ {name}*\\n"
+        result += f"💫 {safe_meaning}\\n\\n"
     
-    result += "🌙 Помните: карты показывают возможности, а выбор всегда за вами!\n"
+    result += "🌙 *Помните:* карты показывают возможности, а выбор всегда за вами!\\n"
     result += "💫 Хотите глубокий анализ? Напишите /deep"
     
     return result
