@@ -20,7 +20,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v4.1"
+    return "✅ v4.2"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /start"""
@@ -80,18 +80,27 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reading = format_reading(cards)
             new_balance = get_balance(user_id)
             
-            # Отправляем расклад как новое сообщение
-            await query.message.reply_text(text=reading)
+            # Сохраняем расклад во временное хранилище пользователя
+            if 'pending_readings' not in context.user_data:
+                context.user_data['pending_readings'] = {}
+            context.user_data['pending_readings'][user_id] = (cards, reading)
             
-            # Кнопки после расклада
+            # Отправляем расклад как НОВОЕ сообщение (не редактируем старое!)
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text=reading
+            )
+            
+            # Отправляем кнопки как ОТДЕЛЬНОЕ сообщение
             keyboard = [
-                [InlineKeyboardButton("💾 Сохранить расклад", callback_data=f'save_reading_{reading}')],
+                [InlineKeyboardButton("💾 Сохранить расклад", callback_data='save_last_reading')],
                 [InlineKeyboardButton("🔄 Ещё один расклад", callback_data='do_tarot')],
                 [InlineKeyboardButton(f"⚖️ Баланс: {new_balance}", callback_data='balance')],
                 [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
             ]
             reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.message.reply_text(
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
                 text="💫 Расклад готов! 💾 Сохраните его, чтобы не потерять.",
                 reply_markup=reply_markup
             )
@@ -107,34 +116,38 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=reply_markup
             )
     
-    elif query.data.startswith('save_reading_'):
-        # Сохраняем расклад в первую свободную ячейку
-        slots = get_saved_slots(user_id)
-        free_slots = [i for i in range(1, 4) if i not in slots]
-        
-        if free_slots:
-            # Извлекаем текст расклада из callback_data
-            reading_text = query.data[len('save_reading_'):]
-            # Генерируем "заглушку" для карт (для демонстрации)
-            cards = [("Шут", {}), ("Маг", {}), ("Жрица", {})]
+    elif query.data == 'save_last_reading':
+        # Получаем последний расклад из временного хранилища
+        if 'pending_readings' in context.user_data and user_id in context.user_data['pending_readings']:
+            cards, reading_text = context.user_data['pending_readings'][user_id]
             
-            slot = save_reading(user_id, cards, reading_text, free_slots[0])
-            if slot:
-                message = f"✅ Расклад сохранён в ячейку #{slot}!\n\nВы можете сохранить до 3 раскладов. Посмотреть их можно в меню → «🗄️ Мои расклады»"
-                keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+            # Проверяем свободные ячейки
+            slots = get_saved_slots(user_id)
+            free_slots = [i for i in range(1, 4) if i not in slots]
+            
+            if free_slots:
+                slot = save_reading(user_id, cards, reading_text, free_slots[0])
+                if slot:
+                    message = f"✅ Расклад сохранён в ячейку #{slot}!\n\nУ вас есть 3 ячейки для хранения раскладов. Посмотреть их можно в меню → «🗄️ Мои расклады»"
+                    keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    await query.edit_message_text(text=message, reply_markup=reply_markup)
+                else:
+                    await query.edit_message_text(text="❌ Ошибка сохранения. Попробуйте ещё раз.")
+            else:
+                # Все ячейки заняты — показываем список для удаления
+                message = "⚠️ Все 3 ячейки для сохранения заняты.\n\nСначала удалите один из сохранённых раскладов:"
+                keyboard = []
+                for slot_num, timestamp in slots.items():
+                    keyboard.append([InlineKeyboardButton(f"❌ Ячейка #{slot_num} ({timestamp})", callback_data=f'delete_slot_{slot_num}')])
+                keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')])
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(text=message, reply_markup=reply_markup)
-            else:
-                await query.edit_message_text(text="❌ Ошибка сохранения. Попробуйте ещё раз.")
+            
+            # Удаляем из временного хранилища
+            del context.user_data['pending_readings'][user_id]
         else:
-            # Все ячейки заняты — показываем список для удаления
-            message = "⚠️ Все 3 ячейки для сохранения заняты.\n\nСначала удалите один из сохранённых раскладов:"
-            keyboard = []
-            for slot_num, timestamp in slots.items():
-                keyboard.append([InlineKeyboardButton(f"❌ Ячейка #{slot_num} ({timestamp})", callback_data=f'delete_slot_{slot_num}')])
-            keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')])
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(text=message, reply_markup=reply_markup)
+            await query.edit_message_text(text="❌ Нет расклада для сохранения. Сначала сделайте расклад!")
     
     elif query.data.startswith('delete_slot_'):
         slot_num = int(query.data.split('_')[2])
@@ -142,7 +155,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = f"✅ Расклад из ячейки #{slot_num} удалён.\nТеперь вы можете сохранить новый расклад!"
         else:
             message = "❌ Ошибка удаления. Попробуйте ещё раз."
-        keyboard = [[InlineKeyboardButton("💾 Сохранить текущий расклад", callback_data=f'save_reading_{query.message.text}')], [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
@@ -312,14 +325,35 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
 
+async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /history — показывает сохранённые расклады"""
+    user_id = update.effective_user.id
+    slots = get_saved_slots(user_id)
+    
+    if not slots:
+        message = "🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n\nУ вас пока нет сохранённых раскладов.\nСделайте расклад и нажмите «💾 Сохранить»!"
+        keyboard = [[InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(text=message, reply_markup=reply_markup)
+        return
+    
+    message = "🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n"
+    keyboard = []
+    for slot_num in sorted(slots.keys()):
+        timestamp = slots[slot_num]
+        keyboard.append([InlineKeyboardButton(f"📦 Ячейка #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(text=message, reply_markup=reply_markup)
+
 def main():
     init_db()
     if not TOKEN:
         print("❌ Токен не установлен")
         return
-    print("✅ Бот запущен v4.1 (ручное сохранение в 3 ячейки, исправленная история)")
+    print("✅ Бот запущен v4.2 (исправлены кнопки после расклада, добавлена /history)")
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("history", history_command))  # ВОССТАНОВЛЕНА КОМАНДА /history
     application.add_handler(CallbackQueryHandler(button_handler))
     application.run_polling()
 
