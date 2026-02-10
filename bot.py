@@ -1,17 +1,20 @@
 ﻿import os
 import logging
 import sqlite3
+import requests
+import json
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-from flask import Flask
+from flask import Flask, request
 import threading
 
-from database import init_db, add_user, get_balance, decrease_balance, increase_balance, add_referral, mark_subscribed, check_subscribed, get_saved_slots, save_reading, get_saved_reading, delete_saved_reading
+from database import init_db, add_user, get_balance, decrease_balance, increase_balance, add_referral, mark_subscribed, check_subscribed, get_saved_slots, save_reading, get_saved_reading, delete_saved_reading, create_payment, complete_payment
 from tarot_cards import get_random_cards, format_reading, get_single_card
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
+NOWPAYMENTS_KEY = os.getenv("NOWPAYMENTS_KEY", "YOUR_API_KEY_HERE")
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,7 +23,35 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v4.4"
+    return "✅ v5.0"
+
+@app.route('/webhook', methods=['POST'])
+async def webhook():
+    """Вебхук для автоматического зачисления криптовалюты"""
+    try:
+        data = request.get_json()
+        
+        payment_id = data.get('payment_id')
+        status = data.get('payment_status')
+        tx_hash = data.get('tx_hash', 'N/A')
+        
+        if status == 'confirmed' and payment_id:
+            user_id, pack_size = complete_payment(payment_id, tx_hash)
+            if user_id:
+                # Отправляем уведомление пользователю
+                await application.bot.send_message(
+                    chat_id=user_id,
+                    text=f"✅ Оплата получена! ✨\n\n"
+                         f"💰 На ваш баланс зачислено {pack_size} раскладов.\n"
+                         f"🧾 Транзакция: {tx_hash[:10]}...\n\n"
+                         f"🎴 Готовы к новому гаданию?"
+                )
+                return "OK", 200
+        
+        return "Ignored", 200
+    except Exception as e:
+        print(f"Ошибка вебхука: {e}")
+        return "Error", 500
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -59,6 +90,54 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if query:
             await query.edit_message_text(text=message, reply_markup=reply_markup)
 
+async def create_crypto_invoice(user_id, pack_size, currency="USDT"):
+    """Создать инвойс для оплаты криптовалютой"""
+    prices = {1: 100, 3: 285, 7: 630, 13: 1105}
+    amount_rub = prices.get(pack_size, 100)
+    
+    try:
+        headers = {
+            "X-API-Key": NOWPAYMENTS_KEY,
+            "Content-Type": "application/json"
+        }
+        
+        # ⚠️ ЗАМЕНИТЕ НА ВАШ РЕАЛЬНЫЙ ДОМЕН (после первого деплоя на Railway):
+        webhook_url = "taro-bot-production-0561.up.railway.app"
+        
+        payload = {
+            "price_amount": amount_rub,
+            "price_currency": "RUB",
+            "pay_currency": currency,
+            "order_id": f"taro_{user_id}_{pack_size}",
+            "order_description": f"Пакет {pack_size} раскладов Таро",
+            "success_url": "https://t.me/cardnotlie_bot",
+            "ipn_callback_url": webhook_url
+        }
+        
+        response = requests.post(
+            "https://api.nowpayments.io/v1/invoice",
+            headers=headers,
+            json=payload
+        )
+        
+        if response.status_code == 201:
+            invoice = response.json()
+            payment_id = invoice['id']
+            invoice_url = invoice['invoice_url']
+            pay_amount = invoice['pay_amount']
+            pay_currency = invoice['pay_currency']
+            
+            create_payment(user_id, amount_rub, pack_size, payment_id, pay_currency, pay_amount)
+            
+            return payment_id, invoice_url, pay_amount, pay_currency
+        else:
+            print(f"Ошибка NOWPayments: {response.text}")
+            return None, None, None, None
+            
+    except Exception as e:
+        print(f"Ошибка создания инвойса: {e}")
+        return None, None, None, None
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -73,7 +152,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reading = format_reading(cards)
             new_balance = get_balance(user_id)
             
-            if 'pending_readings' not in context.user_data:
+            if 'pending_readings' not in context.user_
                 context.user_data['pending_readings'] = {}
             context.user_data['pending_readings'][user_id] = (cards, reading)
             
@@ -214,23 +293,80 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif query.data == 'buy_packs':
         message = (
+            "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
+            "\nВыберите удобный способ:"
+        )
+        keyboard = [
+            [InlineKeyboardButton("💎 Криптовалюта (авто)", callback_data='crypto_packs')],
+            [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
+            [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'crypto_packs':
+        message = (
+            "💎 ПАКЕТЫ КРИПТОВАЛЮТОЙ 💎\n"
+            "\n✨ Выберите пакет со скидкой:\n"
+            "\n🎴 1 расклад — ~1.2 USDT (100₽)\n"
+            "🎴 3 расклада — ~3.4 USDT (285₽, -5%)\n"
+            "🎴 7 раскладов — ~7.5 USDT (630₽, -10%)\n"
+            "🎴 13 раскладов — ~13.2 USDT (1105₽, -15%)"
+        )
+        keyboard = [
+            [InlineKeyboardButton("1 расклад", callback_data='crypto_1')],
+            [InlineKeyboardButton("3 расклада (-5%)", callback_data='crypto_3')],
+            [InlineKeyboardButton("7 раскладов (-10%)", callback_data='crypto_7')],
+            [InlineKeyboardButton("13 раскладов (-15%)", callback_data='crypto_13')],
+            [InlineKeyboardButton("⬅️ Назад", callback_data='buy_packs')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data.startswith('crypto_'):
+        pack_size = int(query.data.split('_')[1])
+        payment_id, invoice_url, pay_amount, pay_currency = await create_crypto_invoice(user_id, pack_size, "USDT")
+        
+        if payment_id:
+            message = (
+                f"💎 ОПЛАТА КРИПТОВАЛЮТОЙ 💎\n"
+                f"\n📦 Пакет: {pack_size} раскладов (скидка до 15%)\n"
+                f"💰 Сумма: {pay_amount:.4f} {pay_currency}\n\n"
+                f"👇 Для оплаты:\n"
+                f"1. Нажмите кнопку «🔗 Перейти к оплате» ниже.\n"
+                f"2. Откройте кошелёк и отправьте точную сумму.\n"
+                f"3. После подтверждения транзакции расклады автоматически зачислятся!\n"
+                f"\n⚠️ Оплата действительна 24 часа."
+            )
+            keyboard = [
+                [InlineKeyboardButton("🔗 Перейти к оплате", url=invoice_url)],
+                [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='crypto_packs')],
+                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(text=message, reply_markup=reply_markup)
+        else:
+            await query.edit_message_text(text="❌ Ошибка создания платежа. Попробуйте позже или обратитесь в поддержку @jobphone_admin")
+    
+    elif query.data == 'card_packs':
+        message = (
             "💳 ПАКЕТЫ РАСКЛАДОВ 💳\n"
             "\n✨ Выберите пакет со скидкой:\n"
             "\n🎴 1 расклад — 100 ₽\n"
-            "   Идеально для разового гадания\n"
+            "   Идеально для разового гадания.\n"
             "\n🎴 3 расклада — 285 ₽ (-5%)\n"
-            "   Экономия 15 ₽\n"
+            "   Экономия 15 ₽.\n"
             "\n🎴 7 раскладов — 630 ₽ (-10%)\n"
-            "   Экономия 70 ₽\n"
+            "   Экономия 70 ₽.\n"
             "\n🎴 13 раскладов — 1 105 ₽ (-15%)\n"
-            "   Экономия 195 ₽"
+            "   Экономия 195 ₽."
         )
         keyboard = [
             [InlineKeyboardButton("1 расклад — 100₽", callback_data='buy_1')],
             [InlineKeyboardButton("3 расклада — 285₽ (-5%)", callback_data='buy_3')],
             [InlineKeyboardButton("7 раскладов — 630₽ (-10%)", callback_data='buy_7')],
             [InlineKeyboardButton("13 раскладов — 1 105₽ (-15%)", callback_data='buy_13')],
-            [InlineKeyboardButton("⬅️ Назад", callback_data='balance')]
+            [InlineKeyboardButton("⬅️ Назад", callback_data='buy_packs')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -246,10 +382,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n"
             f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
             f"\n🏦 Реквизиты для оплаты:\n"
-            f"▫️ Банк: Райффайзенбанк\n"
+            f"▫️ Банк: Райффайзенбанк.\n"
             f"▫️ Номер карты: \n"
             f"▫️ Получатель: Сергей Л.\n"
-            f"▫️ Сумма: {price} ₽\n"
+            f"▫️ Сумма: {price} ₽.\n"
             f"\n✅ ПОСЛЕ ОПЛАТЫ:\n"
             f"1. Сделайте скриншот перевода.\n"
             f"2. Напишите в поддержку @jobphone_admin с пометкой «ОПЛАТА».\n"
@@ -257,7 +393,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"\nℹ️ Подробнее об условиях оплаты: /terms"
         )
         keyboard = [
-            [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='buy_packs')],
+            [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='card_packs')],
             [InlineKeyboardButton("📄 Условия оплаты", callback_data='terms')],
             [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
         ]
@@ -266,16 +402,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif query.data == 'terms' or query.data == 'terms_button':
         message = (
-            "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n\n"
-            "💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+            "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
+            "\n💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
             "Расклады Таро предоставляются в развлекательных целях.\n"
-            "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n\n"
-            "✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
-            "• Оплата добровольная и необязательная\n"
-            "• Расклады носят развлекательный характер\n"
-            "• Вы совершаете платёж по собственной воле без принуждения\n"
-            "• Возврат средств не предусмотрен (добровольный донат)\n\n"
-            "✨ Спасибо за поддержку проекта! 💫"
+            "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n"
+            "\n✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+            "• Оплата добровольная и необязательная.\n"
+            "• Расклады носят развлекательный характер.\n"
+            "• Вы совершаете платёж по собственной воле без принуждения.\n"
+            "• Возврат средств не предусмотрен (добровольный донат).\n"
+            "\n✨ Спасибо за поддержку проекта! 💫"
         )
         keyboard = [[InlineKeyboardButton("⬅️ Назад к оплате", callback_data='buy_packs')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -313,8 +449,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     elif query.data == 'help':
         message = (
-            "❓ ПОМОЩЬ ❓\n\n"
-            "✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
+            "❓ ПОМОЩЬ ❓\n"
+            "\n✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
             "1. Нажмите «Сделать расклад».\n"
             "2. Получите мгновенный расклад из 3 карт.\n"
             "3. Нажмите «💾 Сохранить расклад», чтобы не потерять его.\n"
@@ -328,8 +464,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• За подписку: +3 расклада.\n"
             "• Покупка пакетов со скидкой до 15%.\n"
             "\n💳 ОПЛАТА:\n"
-            "• Оплата на карту Райффайзенбанк (добровольный донат).\n"
-            "• После оплаты напишите @jobphone_admin с пометкой «ОПЛАТА».\n"
+            "• Криптовалюта (автоматически через вебхук).\n"
+            "• Банковская карта (вручную, через поддержку).\n"
             "• Подробнее об условиях: /terms"
         )
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
@@ -377,16 +513,16 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def terms_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
-        "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n\n"
-        "💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+        "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
+        "\n💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
         "Расклады Таро предоставляются в развлекательных целях.\n"
-        "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n\n"
-        "✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
-        "• Оплата добровольная и необязательная\n"
-        "• Расклады носят развлекательный характер\n"
-        "• Вы совершаете платёж по собственной воле без принуждения\n"
-        "• Возврат средств не предусмотрен (добровольный донат)\n\n"
-        "✨ Спасибо за поддержку проекта! 💫"
+        "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n"
+        "\n✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+        "• Оплата добровольная и необязательная.\n"
+        "• Расклады носят развлекательный характер.\n"
+        "• Вы совершаете платёж по собственной воле без принуждения.\n"
+        "• Возврат средств не предусмотрен (добровольный донат).\n"
+        "\n✨ Спасибо за поддержку проекта! 💫"
     )
     await update.message.reply_text(text=message)
 
@@ -403,7 +539,7 @@ def main():
     if not TOKEN:
         print("❌ Токен не установлен")
         return
-    print("✅ Бот запущен v4.4 (исправлены отступы и синтаксис)")
+    print("✅ Бот запущен v5.0 (автоматическая криптооплата через NOWPayments)")
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("history", history_command))
