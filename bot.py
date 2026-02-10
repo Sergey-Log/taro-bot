@@ -140,7 +140,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cards = get_random_cards(3)
             reading = format_reading(cards)
             new_balance = get_balance(user_id)
-            if 'pending_readings' not in context.user_
+            if 'pending_readings' not in context.user_data:
                 context.user_data['pending_readings'] = {}
             context.user_data['pending_readings'][user_id] = (cards, reading)
             await context.bot.send_message(chat_id=query.message.chat_id, text=reading)
