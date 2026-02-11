@@ -2,12 +2,12 @@
 import logging
 import sqlite3
 import requests
+import re
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 from flask import Flask, request
 import threading
-import re
 
 from database import init_db, add_user, get_balance, decrease_balance, increase_balance, add_referral, mark_subscribed, check_subscribed, get_saved_slots, save_reading, get_saved_reading, delete_saved_reading, create_payment, complete_payment, get_user_data, save_user_data
 from tarot_cards import get_random_cards, format_reading, get_single_card
@@ -21,7 +21,6 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-# Состояния для запроса данных
 ASKING_NAME, ASKING_BIRTHDATE = range(2)
 
 @app.route('/')
@@ -55,7 +54,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     add_user(user.id, user.username, user.first_name)
     
-    # Обработка реферальной ссылки
     if args:
         try:
             referrer_id = int(args[0])
@@ -69,10 +67,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     except: pass
         except: pass
     
-    # Проверяем, есть ли данные пользователя
     user_data = get_user_data(user.id)
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
-        # Запрашиваем данные
         await update.message.reply_text(
             "✨ Добро пожаловать в мир Таро!\n\n"
             "🔮 Чтобы сделать персонализированный расклад, мне нужны ваши данные:\n"
@@ -97,7 +93,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Запрос имени"""
     name = update.message.text.strip()
     if len(name) < 2:
         await update.message.reply_text("❌ Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
@@ -111,22 +106,18 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ASKING_BIRTHDATE
 
 async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Запрос даты рождения"""
     birthdate = update.message.text.strip()
-    # Проверка формата ДД.ММ.ГГГГ
     if not re.match(r'^\d{2}\.\d{2}\.\d{4}$', birthdate):
         await update.message.reply_text(
             "❌ Неверный формат даты. Напишите в формате ДД.ММ.ГГГГ (например, 15.08.1990):"
         )
         return ASKING_BIRTHDATE
     
-    # Сохраняем данные пользователя
     user_id = update.effective_user.id
     name = context.user_data.get('temp_name', 'Аноним')
     save_user_data(user_id, name, birthdate)
     
-    # Удаляем временные данные
-    if 'temp_name' in context.user_data:
+    if 'temp_name' in context.user_
         del context.user_data['temp_name']
     
     balance = get_balance(user_id)
@@ -136,7 +127,6 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🎴 Готовы к первому раскладу?"
     )
     
-    # Показываем меню
     keyboard = [
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
@@ -201,7 +191,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     user_id = query.from_user.id
     
-    # Проверяем, есть ли данные пользователя
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
         await query.message.reply_text(
@@ -216,16 +205,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         balance = get_balance(user_id)
         
         if balance > 0:
-            # Уменьшаем баланс ПЕРЕД созданием расклада
             if not decrease_balance(user_id, 1):
                 await query.edit_message_text(text="❌ Ошибка при списании расклада. Попробуйте позже.")
                 return
             
-            new_balance = get_balance(user_id)  # Получаем новый баланс после списания
+            new_balance = get_balance(user_id)
             cards = get_random_cards(3)
             reading = format_reading(cards, user_data['name'])
             
-            if 'pending_readings' not in context.user_data:
+            if 'pending_readings' not in context.user_
                 context.user_data['pending_readings'] = {}
             context.user_data['pending_readings'][user_id] = (cards, reading)
             
@@ -255,8 +243,275 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 reply_markup=reply_markup
             )
     
-    # ... остальные обработчики кнопок (без изменений, кроме текста помощи) ...
-    # Сокращу для краткости — замените только текст помощи ниже
+    elif query.data == 'save_last_reading':
+        if 'pending_readings' in context.user_data and user_id in context.user_data['pending_readings']:
+            cards, reading_text = context.user_data['pending_readings'][user_id]
+            slots = get_saved_slots(user_id)
+            free_slots = [i for i in range(1, 4) if i not in slots]
+            
+            if free_slots:
+                slot = save_reading(user_id, cards, reading_text, free_slots[0])
+                message = f"✅ Расклад сохранён в ячейку #{slot}!"
+                keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await query.edit_message_text(text=message, reply_markup=reply_markup)
+                del context.user_data['pending_readings'][user_id]
+            else:
+                message = "⚠️ Все 3 ячейки заняты. Сначала удалите старый расклад:"
+                keyboard = []
+                for slot_num, timestamp in slots.items():
+                    keyboard.append([InlineKeyboardButton(f"❌ Ячейка #{slot_num} ({timestamp})", callback_data=f'delete_slot_{slot_num}')])
+                keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')])
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await query.edit_message_text(text=message, reply_markup=reply_markup)
+        else:
+            await query.edit_message_text(text="❌ Нет расклада для сохранения. Сначала сделайте расклад!")
+    
+    elif query.data.startswith('delete_slot_'):
+        slot_num = int(query.data.split('_')[2])
+        if delete_saved_reading(user_id, slot_num):
+            message = f"✅ Расклад из ячейки #{slot_num} удалён."
+        else:
+            message = "❌ Ошибка удаления."
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'saved_readings':
+        slots = get_saved_slots(user_id)
+        occupied = len(slots)
+        free = 3 - occupied
+        
+        message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n📦 Доступно ячеек для сохранения: {occupied}/3\n"
+        if free > 0:
+            message += f"✨ Свободно ячеек: {free}\n\n"
+        else:
+            message += "⚠️ Все ячейки заняты. Чтобы сохранить новый расклад, сначала удалите старый.\n\n"
+        
+        if not slots:
+            message += "У вас пока нет сохранённых раскладов.\nСделайте расклад и нажмите «💾 Сохранить»!"
+            keyboard = [[InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')], [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(text=message, reply_markup=reply_markup)
+            return
+        
+        keyboard = []
+        for slot_num in sorted(slots.keys()):
+            timestamp = slots[slot_num]
+            keyboard.append([InlineKeyboardButton(f"📦 Ячейка #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
+        keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data.startswith('view_slot_'):
+        slot_num = int(query.data.split('_')[2])
+        reading = get_saved_reading(user_id, slot_num)
+        if reading:
+            cards_str, interpretation, timestamp = reading
+            message = f"📦 РАСКЛАД ИЗ ЯЧЕЙКИ #{slot_num}\n📅 {timestamp[:16]}\n\n{interpretation}"
+            keyboard = [[InlineKeyboardButton("❌ Удалить этот расклад", callback_data=f'delete_slot_{slot_num}')], [InlineKeyboardButton("⬅️ Назад к списку", callback_data='saved_readings')]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(text=message, reply_markup=reply_markup)
+        else:
+            await query.edit_message_text(text="❌ Расклад не найден.")
+    
+    elif query.data == 'balance':
+        balance = get_balance(user_id)
+        message = (
+            f"⚖️ ВАШ ТЕКУЩИЙ БАЛАНС ⚖️\n"
+            f"\n🔮 Доступно раскладов: {balance}\n"
+            f"\n✨ Как получить больше раскладов:\n"
+            f"• Пригласите друга — +1 расклад 🎁\n"
+            f"• Подпишитесь на канал — +3 расклада 📺\n"
+            f"• Купите пакет раскладов со скидкой 💳"
+        )
+        keyboard = [
+            [InlineKeyboardButton("💳 Купить расклады", callback_data='buy_packs')],
+            [InlineKeyboardButton("💫 Пригласить друга", callback_data='referral')],
+            [InlineKeyboardButton("📺 Подписаться (+3)", callback_data='subscribe')],
+            [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'referral':
+        ref_link = f"https://t.me/cardnotlie_bot?start={user_id}"
+        referral_count = get_referral_count(user_id)
+        message = (
+            f"🎁 РЕФЕРАЛЬНАЯ ПРОГРАММА 🎁\n\n"
+            f"✨ Ваша реферальная ссылка:\n"
+            f"{ref_link}\n\n"
+            f"📊 Приглашено друзей: {referral_count}\n"
+            f"💫 За каждого друга — +1 бесплатный расклад!\n\n"
+            f"📤 Просто отправьте ссылку друзьям или в соцсети!"
+        )
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'buy_packs':
+        message = (
+            "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
+            "\nВыберите удобный способ:\n"
+            "\n💎 Криптовалюта — автоматическое зачисление после оплаты ✅\n"
+            "🏦 Банковская карта — требуется ручная проверка скриншота ⏳"
+        )
+        keyboard = [
+            [InlineKeyboardButton("💎 Криптовалюта (авто)", callback_data='crypto_packs')],
+            [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
+            [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'crypto_packs':
+        message = (
+            "💎 ПАКЕТЫ КРИПТОВАЛЮТОЙ 💎\n"
+            "\n✨ Выберите пакет со скидкой:\n"
+            "\n🎴 1 расклад — ~1.2 USDT (100₽)\n"
+            "🎴 3 расклада — ~3.4 USDT (285₽, -5%)\n"
+            "🎴 7 раскладов — ~7.5 USDT (630₽, -10%)\n"
+            "🎴 13 раскладов — ~13.2 USDT (1105₽, -15%)"
+        )
+        keyboard = [
+            [InlineKeyboardButton("1 расклад", callback_data='crypto_1')],
+            [InlineKeyboardButton("3 расклада (-5%)", callback_data='crypto_3')],
+            [InlineKeyboardButton("7 раскладов (-10%)", callback_data='crypto_7')],
+            [InlineKeyboardButton("13 раскладов (-15%)", callback_data='crypto_13')],
+            [InlineKeyboardButton("⬅️ Назад", callback_data='buy_packs')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data.startswith('crypto_'):
+        pack_size = int(query.data.split('_')[1])
+        payment_id, invoice_url, pay_amount, pay_currency = await create_crypto_invoice(user_id, pack_size, "USDT")
+        
+        if payment_id:
+            message = (
+                f"💎 ОПЛАТА КРИПТОВАЛЮТОЙ 💎\n"
+                f"\n📦 Пакет: {pack_size} раскладов (скидка до 15%)\n"
+                f"💰 Сумма: {pay_amount:.4f} {pay_currency}\n\n"
+                f"👇 Для оплаты:\n"
+                f"1. Нажмите кнопку «🔗 Перейти к оплате» ниже.\n"
+                f"2. Откройте кошелёк и отправьте точную сумму.\n"
+                f"3. После подтверждения транзакции расклады автоматически зачислятся!\n"
+                f"\n⚠️ Оплата действительна 24 часа."
+            )
+            keyboard = [
+                [InlineKeyboardButton("🔗 Перейти к оплате", url=invoice_url)],
+                [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='crypto_packs')],
+                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(text=message, reply_markup=reply_markup)
+        else:
+            message = (
+                "❌ Ошибка создания платежа.\n"
+                "💬 Обратитесь в поддержку: @jobphone_admin"
+            )
+            keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'card_packs':
+        message = (
+            "💳 ПАКЕТЫ РАСКЛАДОВ 💳\n"
+            "\n✨ Выберите пакет со скидкой:\n"
+            "\n🎴 1 расклад — 100 ₽\n"
+            "   Идеально для разового гадания.\n"
+            "\n🎴 3 расклада — 285 ₽ (-5%)\n"
+            "   Экономия 15 ₽.\n"
+            "\n🎴 7 раскладов — 630 ₽ (-10%)\n"
+            "   Экономия 70 ₽.\n"
+            "\n🎴 13 раскладов — 1 105 ₽ (-15%)\n"
+            "   Экономия 195 ₽."
+        )
+        keyboard = [
+            [InlineKeyboardButton("1 расклад — 100₽", callback_data='buy_1')],
+            [InlineKeyboardButton("3 расклада — 285₽ (-5%)", callback_data='buy_3')],
+            [InlineKeyboardButton("7 раскладов — 630₽ (-10%)", callback_data='buy_7')],
+            [InlineKeyboardButton("13 раскладов — 1 105₽ (-15%)", callback_data='buy_13')],
+            [InlineKeyboardButton("⬅️ Назад", callback_data='buy_packs')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data.startswith('buy_'):
+        pack_size = int(query.data.split('_')[1])
+        prices = {1: 100, 3: 285, 7: 630, 13: 1105}
+        price = prices[pack_size]
+        discounts = {1: "0%", 3: "5%", 7: "10%", 13: "15%"}
+        discount = discounts[pack_size]
+        
+        message = (
+            f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n"
+            f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
+            f"\n🏦 Реквизиты для оплаты:\n"
+            f"▫️ Банк: Райффайзенбанк.\n"
+            f"▫️ Номер карты: \n"
+            f"▫️ Получатель: Сергей Л.\n"
+            f"▫️ Сумма: {price} ₽.\n"
+            f"\n✅ ПОСЛЕ ОПЛАТЫ:\n"
+            f"1. Сделайте скриншот перевода.\n"
+            f"2. Напишите в поддержку @jobphone_admin с пометкой «ОПЛАТА».\n"
+            f"3. Мы начислим {pack_size} раскладов на ваш баланс в течение 10 минут! ✨\n"
+            f"\nℹ️ Подробнее об условиях оплаты: /terms"
+        )
+        keyboard = [
+            [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='card_packs')],
+            [InlineKeyboardButton("📄 Условия оплаты", callback_data='terms')],
+            [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'terms' or query.data == 'terms_button':
+        message = (
+            "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
+            "\n💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+            "Расклады Таро предоставляются в развлекательных целях.\n"
+            "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n"
+            "\n✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+            "• Оплата добровольная и необязательная.\n"
+            "• Расклады носят развлекательный характер.\n"
+            "• Вы совершаете платёж по собственной воле без принуждения.\n"
+            "• Возврат средств не предусмотрен (добровольный донат).\n"
+            "\n✨ Спасибо за поддержку проекта! 💫"
+        )
+        keyboard = [[InlineKeyboardButton("⬅️ Назад к оплате", callback_data='buy_packs')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'subscribe':
+        subscribed = check_subscribed(user_id)
+        if subscribed:
+            message = "✅ Вы уже подписаны на наш канал!\n💫 Бонус +3 расклада уже начислен."
+        else:
+            message = (
+                "📺 ПОДПИСКА НА КАНАЛ 📺\n"
+                "\nПодпишитесь на наш эзотерический канал и получите +3 бесплатных расклада!\n"
+                "\n✨ Канал: https://t.me/+5q7VJBPU4_QyMDky\n"
+                "\nПосле подписки нажмите кнопку ниже:"
+            )
+        keyboard = [
+            [InlineKeyboardButton("📺 Перейти в канал", url="https://t.me/+5q7VJBPU4_QyMDky")],
+            [InlineKeyboardButton("✅ Я подписался (+3 расклада)", callback_data='confirm_subscribe')],
+            [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
+    elif query.data == 'confirm_subscribe':
+        subscribed = check_subscribed(user_id)
+        if subscribed:
+            message = "✅ Вы уже получили бонус за подписку!"
+        else:
+            mark_subscribed(user_id)
+            message = "🎉 Ура! Вы подписались на канал!\n✨ Бонус +3 бесплатных расклада начислен на ваш счёт!"
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'help':
         message = (
@@ -283,8 +538,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
-    # ... остальные elif (без изменений) ...
-    
     elif query.data == 'back_to_menu':
         user_data = get_user_data(user_id)
         if not user_data or not user_data.get('name'):
@@ -303,7 +556,54 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
 
-# ... остальные функции (history_command, terms_command, get_referral_count, main, run_flask) без изменений ...
+async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    slots = get_saved_slots(user_id)
+    occupied = len(slots)
+    free = 3 - occupied
+    
+    message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n\n📦 Доступно ячеек для сохранения: {occupied}/3\n"
+    if free > 0:
+        message += f"✨ Свободно ячеек: {free}\n\n"
+    else:
+        message += "⚠️ Все ячейки заняты.\n\n"
+    
+    if not slots:
+        message += "У вас пока нет сохранённых раскладов.\nСделайте расклад и нажмите «💾 Сохранить»!"
+        keyboard = [[InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text(text=message, reply_markup=reply_markup)
+        return
+    
+    keyboard = []
+    for slot_num in sorted(slots.keys()):
+        timestamp = slots[slot_num]
+        keyboard.append([InlineKeyboardButton(f"📦 Ячейка #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(text=message, reply_markup=reply_markup)
+
+async def terms_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    message = (
+        "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
+        "\n💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+        "Расклады Таро предоставляются в развлекательных целях.\n"
+        "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n"
+        "\n✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+        "• Оплата добровольная и необязательная.\n"
+        "• Расклады носят развлекательный характер.\n"
+        "• Вы совершаете платёж по собственной воле без принуждения.\n"
+        "• Возврат средств не предусмотрен (добровольный донат).\n"
+        "\n✨ Спасибо за поддержку проекта! 💫"
+    )
+    await update.message.reply_text(text=message)
+
+def get_referral_count(user_id):
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM referrals WHERE referrer_id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else 0
 
 def main():
     global application
@@ -311,11 +611,10 @@ def main():
     if not TOKEN:
         print("❌ Токен не установлен")
         return
-    print("✅ Бот запущен v5.2 (запрос данных, исправленная трата раскладов, чистый интерфейс)")
+    print("✅ Бот запущен v5.2 (запрос данных, один совет, исправлена трата раскладов)")
     
     application = Application.builder().token(TOKEN).build()
     
-    # ConversationHandler для запроса данных
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
