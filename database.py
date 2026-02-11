@@ -59,7 +59,7 @@ def init_db():
     conn.commit()
     conn.close()
     print("✅ База данных инициализирована (с таблицей платежей)")
-	init_user_data_table()
+    init_user_data_table()
 
 def add_user(user_id, username, first_name):
     """Добавить пользователя в базу"""
