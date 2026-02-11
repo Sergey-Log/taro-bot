@@ -59,6 +59,7 @@ def init_db():
     conn.commit()
     conn.close()
     print("✅ База данных инициализирована (с таблицей платежей)")
+	init_user_data_table()
 
 def add_user(user_id, username, first_name):
     """Добавить пользователя в базу"""
@@ -201,3 +202,45 @@ def complete_payment(payment_id, tx_hash):
     else:
         conn.close()
         return None, None
+
+# ===== НОВЫЕ ФУНКЦИИ ДЛЯ ХРАНЕНИЯ ДАННЫХ ПОЛЬЗОВАТЕЛЯ =====
+
+def init_user_data_table():
+    """Инициализация таблицы данных пользователя (вызывается из init_db)"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS user_data (
+            user_id INTEGER PRIMARY KEY,
+            name TEXT,
+            birthdate TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Добавьте вызов этой функции в конец init_db():
+# init_user_data_table()
+
+def save_user_data(user_id, name, birthdate):
+    """Сохранить/обновить данные пользователя"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT OR REPLACE INTO user_data (user_id, name, birthdate, updated_at)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    ''', (user_id, name, birthdate))
+    conn.commit()
+    conn.close()
+
+def get_user_data(user_id):
+    """Получить данные пользователя"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT name, birthdate FROM user_data WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        return {'name': result[0], 'birthdate': result[1]}
+    return None
