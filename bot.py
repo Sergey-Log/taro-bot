@@ -4,7 +4,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 from flask import Flask
 import threading
 
-from handlers import start_handler, button_handler, history_command, terms_command
+from handlers import start_handler, button_handler, history_command, terms_command, ask_name, ask_birthdate
 from utils import init_db
 
 load_dotenv()
@@ -30,7 +30,7 @@ def main():
     application = Application.builder().token(TOKEN).build()
     
     # Регистрация обработчиков
-    application.add_handler(CommandHandler("start", start_handler))
+    application.add_handler(start_handler)
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("terms", terms_command))
     application.add_handler(CallbackQueryHandler(button_handler))
