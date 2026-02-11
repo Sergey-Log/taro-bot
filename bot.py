@@ -117,7 +117,7 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = context.user_data.get('temp_name', 'Аноним')
     save_user_data(user_id, name, birthdate)
     
-    if 'temp_name' in context.user_
+    if 'temp_name' in context.user_data:
         del context.user_data['temp_name']
     
     balance = get_balance(user_id)
@@ -213,7 +213,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cards = get_random_cards(3)
             reading = format_reading(cards, user_data['name'])
             
-            if 'pending_readings' not in context.user_
+            if 'pending_readings' not in context.user_data:
                 context.user_data['pending_readings'] = {}
             context.user_data['pending_readings'][user_id] = (cards, reading)
             
