@@ -15,17 +15,7 @@ from utils import (
 
 ASKING_NAME, ASKING_BIRTHDATE = range(2)
 
-# === ОБРАБОТЧИКИ КОМАНД ===
-
-start_handler = ConversationHandler(
-    entry_points=[CommandHandler("start", _start)],
-    states={
-        ASKING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_name)],
-        ASKING_BIRTHDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_birthdate)],
-    },
-    fallbacks=[CommandHandler("start", _start)],
-    allow_reentry=True
-)
+# === СНАЧАЛА ОПРЕДЕЛЯЕМ ВСЕ ФУНКЦИИ ===
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -179,7 +169,19 @@ async def terms_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(text=message)
 
-# === CALLBACK-ОБРАБОТЧИКИ ===
+# === ТОЛЬКО ПОСЛЕ ЭТОГО СОЗДАЁМ start_handler ===
+
+start_handler = ConversationHandler(
+    entry_points=[CommandHandler("start", _start)],
+    states={
+        ASKING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_name)],
+        ASKING_BIRTHDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_birthdate)],
+    },
+    fallbacks=[CommandHandler("start", _start)],
+    allow_reentry=True
+)
+
+# === ОСТАЛЬНЫЕ ОБРАБОТЧИКИ (без изменений) ===
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
