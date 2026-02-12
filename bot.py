@@ -4,7 +4,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 from flask import Flask
 import threading
 
-from handlers import start_handler, button_handler, history_command, terms_command, ask_name, ask_birthdate
+from handlers import start_handler, button_handler, history_command, terms_command
 from utils import init_db
 
 load_dotenv()
@@ -14,12 +14,11 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v5.4"
+    return "✅ v5.7"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
-    from handlers import process_webhook
-    return process_webhook()
+    return "OK", 200
 
 def main():
     init_db()
@@ -35,7 +34,7 @@ def main():
     application.add_handler(CommandHandler("terms", terms_command))
     application.add_handler(CallbackQueryHandler(button_handler))
     
-    print("✅ Бот запущен v5.4")
+    print("✅ Бот запущен v5.7 (расширенные интерпретации + исправленные расклады)")
     application.run_polling()
 
 def run_flask():

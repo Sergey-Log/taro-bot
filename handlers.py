@@ -258,10 +258,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # ... остальные обработчики кнопок (без изменений) ...
-    # Сокращу для краткости — все остальные функции работают как раньше
-    
-    elif query.data == 'save_last_reading':
+    # Обработка сохранения расклада
+    if query.data == 'save_last_reading':
         if 'pending_readings' in context.user_data and user_id in context.user_data['pending_readings']:
             cards, reading_text = context.user_data['pending_readings'][user_id]
             slots = get_saved_slots(user_id)
@@ -371,66 +369,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = (
             "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
             "\nВыберите удобный способ:\n"
-            "\n💎 Криптовалюта — автоматическое зачисление после оплаты ✅\n"
-            "🏦 Банковская карта — требуется ручная проверка скриншота ⏳"
+            "\n🏦 Банковская карта — требуется ручная проверка скриншота ⏳\n"
+            "💎 Криптовалюта — в разработке 🔜"
         )
         keyboard = [
-            [InlineKeyboardButton("💎 Криптовалюта (авто)", callback_data='crypto_packs')],
             [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
             [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
-    elif query.data == 'crypto_packs':
-        message = (
-            "💎 ПАКЕТЫ КРИПТОВАЛЮТОЙ 💎\n"
-            "\n✨ Выберите пакет со скидкой:\n"
-            "\n🎴 1 расклад — ~1.2 USDT (100₽)\n"
-            "🎴 3 расклада — ~3.4 USDT (285₽, -5%)\n"
-            "🎴 7 раскладов — ~7.5 USDT (630₽, -10%)\n"
-            "🎴 13 раскладов — ~13.2 USDT (1105₽, -15%)"
-        )
-        keyboard = [
-            [InlineKeyboardButton("1 расклад", callback_data='crypto_1')],
-            [InlineKeyboardButton("3 расклада (-5%)", callback_data='crypto_3')],
-            [InlineKeyboardButton("7 раскладов (-10%)", callback_data='crypto_7')],
-            [InlineKeyboardButton("13 раскладов (-15%)", callback_data='crypto_13')],
-            [InlineKeyboardButton("⬅️ Назад", callback_data='buy_packs')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
-    elif query.data.startswith('crypto_'):
-        pack_size = int(query.data.split('_')[1])
-        payment_id, invoice_url, pay_amount, pay_currency = await create_crypto_invoice(user_id, pack_size, "USDT")
-        
-        if payment_id:
-            message = (
-                f"💎 ОПЛАТА КРИПТОВАЛЮТОЙ 💎\n"
-                f"\n📦 Пакет: {pack_size} раскладов (скидка до 15%)\n"
-                f"💰 Сумма: {pay_amount:.4f} {pay_currency}\n\n"
-                f"👇 Для оплаты:\n"
-                f"1. Нажмите кнопку «🔗 Перейти к оплате» ниже.\n"
-                f"2. Откройте кошелёк и отправьте точную сумму.\n"
-                f"3. После подтверждения транзакции расклады автоматически зачислятся!\n"
-                f"\n⚠️ Оплата действительна 24 часа."
-            )
-            keyboard = [
-                [InlineKeyboardButton("🔗 Перейти к оплате", url=invoice_url)],
-                [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='crypto_packs')],
-                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(text=message, reply_markup=reply_markup)
-        else:
-            message = (
-                "❌ Ошибка создания платежа.\n"
-                "💬 Обратитесь в поддержку: @jobphone_admin"
-            )
-            keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'card_packs':
         message = (
@@ -549,8 +496,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• За подписку: +3 расклада.\n"
             "• Покупка пакетов со скидкой до 15%.\n"
             "\n💳 ОПЛАТА:\n"
-            "• Криптовалюта — автоматическое зачисление после оплаты ✅\n"
-            "• Банковская карта — требуется ручная проверка скриншота ⏳\n"
+            "• Банковская карта — ручная проверка скриншота ⏳\n"
+            "• Криптовалюта — в разработке 🔜\n"
             "• Подробнее об условиях: /terms"
         )
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
@@ -646,7 +593,7 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     cards = get_random_cards(spread_info['cards_count'])
     reading = format_reading(cards, user_data['name'], spread_info['positions'])
     
-    if 'pending_readings' not in context.user_data:
+    if 'pending_readings' not in context.user_
         context.user_data['pending_readings'] = {}
     context.user_data['pending_readings'][user_id] = (cards, reading)
     
@@ -664,70 +611,3 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
         text="💫 Расклад готов! 💾 Сохраните его, чтобы не потерять.",
         reply_markup=reply_markup
     )
-
-async def create_crypto_invoice(user_id, pack_size, currency="USDT"):
-    prices = {1: 100, 3: 285, 7: 630, 13: 1105}
-    amount_rub = prices.get(pack_size, 100)
-    
-    API_URL = "https://api.sandbox.nowpayments.io/v1/invoice"
-    
-    if not NOWPAYMENTS_KEY or NOWPAYMENTS_KEY == "YOUR_API_KEY_HERE":
-        print("❌ ОШИБКА: NOWPAYMENTS_KEY не установлен")
-        return None, None, None, None
-    
-    try:
-        headers = {
-            "X-API-Key": NOWPAYMENTS_KEY,
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "price_amount": amount_rub,
-            "price_currency": "RUB",
-            "pay_currency": currency,
-            "order_id": f"taro_{user_id}_{pack_size}",
-            "order_description": f"Пакет {pack_size} раскладов Таро",
-            "success_url": "https://t.me/cardnotlie_bot"
-        }
-        
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=15)
-        
-        if response.status_code == 201:
-            invoice = response.json()
-            payment_id = invoice['id']
-            invoice_url = invoice['invoice_url']
-            pay_amount = invoice['pay_amount']
-            pay_currency = invoice['pay_currency']
-            create_payment(user_id, amount_rub, pack_size, payment_id, pay_currency, pay_amount)
-            print(f"✅ Инвойс создан: {payment_id}")
-            return payment_id, invoice_url, pay_amount, pay_currency
-        else:
-            error_msg = response.json().get('message', 'Неизвестная ошибка')
-            print(f"❌ Ошибка NOWPayments ({response.status_code}): {error_msg}")
-            demo_url = f"https://t.me/cardnotlie_bot?start=pay_demo_{pack_size}"
-            return f"demo_{user_id}_{pack_size}", demo_url, amount_rub * 0.012, "USDT"
-    except Exception as e:
-        print(f"❌ Исключение: {e}")
-        demo_url = f"https://t.me/cardnotlie_bot?start=pay_demo_{pack_size}"
-        return f"demo_{user_id}_{pack_size}", demo_url, amount_rub * 0.012, "USDT"
-
-def process_webhook():
-    """Обработка вебхука NOWPayments"""
-    try:
-        data = request.get_json()
-        payment_id = data.get('payment_id')
-        status = data.get('payment_status')
-        tx_hash = data.get('tx_hash', 'N/A')
-        
-        if status == 'confirmed' and payment_id:
-            user_id, pack_size = complete_payment(payment_id, tx_hash)
-            if user_id:
-                from bot import application
-                application.bot.send_message(
-                    chat_id=user_id,
-                    text=f"✅ Оплата получена! ✨\n\n💰 На ваш баланс зачислено {pack_size} раскладов.\n🧾 Транзакция: {tx_hash[:10]}...\n\n🎴 Готовы к новому гаданию?"
-                )
-                return "OK", 200
-        return "Ignored", 200
-    except Exception as e:
-        print(f"❌ Ошибка вебхука: {e}")
-        return "Error", 500
