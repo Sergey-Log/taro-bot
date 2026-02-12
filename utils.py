@@ -568,9 +568,11 @@ def format_reading(cards, user_name="Друг", positions=None):
     
     return result
 
+# ... (весь файл без изменений, кроме этой функции) ...
+
 def format_daily_card(card_name, interpretation, user_name="Друг"):
     """Форматирование карты дня БЕЗ разделов любви и карьеры"""
-    result = f"🌅 ВАША КАРТА ДНЯ, {user_name.upper()}! 🌅\n"
+    result = f"🌅 ВАША КАРТА ДНЯ, {user_name}! 🌅\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     result += f"✨ КАРТА: {card_name}\n"
     result += f"💫 ГЛУБИННОЕ ЗНАЧЕНИЕ:\n{interpretation['short']}\n\n"
