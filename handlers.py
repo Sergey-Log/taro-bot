@@ -260,7 +260,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Обработка сохранения расклада
     if query.data == 'save_last_reading':
-        if 'pending_readings' in context.user_data and user_id in context.user_data['pending_readings']:
+        if 'pending_readings' in context.user_data and user_id in context.user_data.get('pending_readings', {}):
             cards, reading_text = context.user_data['pending_readings'][user_id]
             slots = get_saved_slots(user_id)
             free_slots = [i for i in range(1, 4) if i not in slots]
