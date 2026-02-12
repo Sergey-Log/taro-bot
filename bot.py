@@ -1,6 +1,7 @@
 ﻿import os
 from dotenv import load_dotenv
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram import BotCommand  # ← ДОБАВЛЕНО
 from flask import Flask
 import threading
 
@@ -14,11 +15,20 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v5.7"
+    return "✅ v5.9"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
     return "OK", 200
+
+# ← ДОБАВЛЕНА ФУНКЦИЯ
+async def post_init(application):
+    await application.bot.set_my_commands([
+        BotCommand("start", "🔮 Начать работу с ботом"),
+        BotCommand("daily", "🌅 Карта дня (бесплатно)"),
+        BotCommand("balance", "⚖️ Проверить баланс"),
+        BotCommand("help", "❓ Помощь и инструкции")
+    ])
 
 def main():
     init_db()
@@ -26,7 +36,8 @@ def main():
         print("❌ Токен не установлен")
         return
     
-    application = Application.builder().token(TOKEN).build()
+    # ← ИЗМЕНЕНА СТРОКА
+    application = Application.builder().token(TOKEN).post_init(post_init).build()
     
     # Регистрация обработчиков
     application.add_handler(start_handler)
@@ -34,7 +45,7 @@ def main():
     application.add_handler(CommandHandler("terms", terms_command))
     application.add_handler(CallbackQueryHandler(button_handler))
     
-    print("✅ Бот запущен v5.7 (расширенные интерпретации + исправленные расклады)")
+    print("✅ Бот запущен v5.9 (исправлены кракозябры + команды)")
     application.run_polling()
 
 def run_flask():
