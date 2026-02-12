@@ -562,6 +562,8 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.edit_message_text(text=message, reply_markup=reply_markup)
 
 
+# ... (начало файла без изменений) ...
+
 async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -588,17 +590,24 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     spreads = get_spread_options()
     
     if spread_id not in spreads:
-        await query.edit_message_text(text=f"❌ Неверный тип расклада: {spread_id}. Доступные: {', '.join(spreads.keys())}")
+        await query.edit_message_text(text=f"❌ Неверный тип расклада: '{spread_id}'. Доступные: {', '.join(spreads.keys())}")
         return
     
     spread_info = spreads[spread_id]
-    cards = get_random_cards(spread_info['cards_count'])
-    reading = format_reading(cards, user_data['name'], spread_info['positions'])
+    try:
+        cards = get_random_cards(spread_info['cards_count'])
+        reading = format_reading(cards, user_data['name'], spread_info['positions'])
+    except Exception as e:
+        # Возврат баланса при ошибке генерации
+        increase_balance(user_id, 1)
+        await query.edit_message_text(text=f"❌ Ошибка генерации расклада: {str(e)[:100]}\nБаланс возвращён.")
+        return
     
     if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
     context.user_data['pending_readings'][user_id] = (cards, reading)
     
+    # Отправляем расклад как ОТДЕЛЬНОЕ сообщение (не редактируем кнопки)
     await context.bot.send_message(chat_id=query.message.chat_id, text=reading)
     
     keyboard = [

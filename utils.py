@@ -482,6 +482,8 @@ def get_spread_options():
         }
     }
 
+# ... (начало файла без изменений) ...
+
 def format_reading(cards, user_name="Друг", positions=None):
     """Форматирование расклада с ОДНИМ общим советом в конце"""
     if positions is None:
@@ -496,6 +498,7 @@ def format_reading(cards, user_name="Друг", positions=None):
         elif count == 5:
             positions = ["🎴 ВАША ЭНЕРГИЯ", "🎴 ЭНЕРГИЯ ПАРТНЁРА", "🎴 ДИНАМИКА СВЯЗИ", "🎴 ПРЕПЯТСТВИЯ", "🎴 СОВЕТ ТАРО"]
         elif count == 10:
+            # ✅ ИСПРАВЛЕНО: точное совпадение с 10 позициями для кельтского креста
             positions = [
                 "🎴 ТЕКУЩАЯ СИТУАЦИЯ", "🎴 ПРЕПЯТСТВИЕ", "🎴 СОЗНАНИЕ", 
                 "🎴 БЕССОЗНАТЕЛЬНОЕ", "🎴 ПРОШЛОЕ", "🎴 БУДУЩЕЕ",
@@ -504,6 +507,10 @@ def format_reading(cards, user_name="Друг", positions=None):
             ]
         else:
             positions = [f"🎴 КАРТА {i+1}" for i in range(count)]
+    
+    # ✅ ИСПРАВЛЕНО: проверка длины positions == длине карт
+    if len(positions) != len(cards):
+        raise ValueError(f"Несоответствие позиций ({len(positions)}) и карт ({len(cards)})")
     
     result = f"🔮 ПЕРСОНАЛИЗИРОВАННЫЙ РАСКЛАД ДЛЯ {user_name.upper()} 🔮\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
