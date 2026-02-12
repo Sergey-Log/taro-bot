@@ -1,6 +1,7 @@
 import sqlite3
 import random
 import re
+from datetime import datetime, timedelta
 
 # === РАБОТА С БАЗОЙ ДАННЫХ ===
 
@@ -66,6 +67,17 @@ def init_db():
             name TEXT,
             birthdate TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Таблица для отслеживания карты дня
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS daily_card (
+            user_id INTEGER PRIMARY KEY,
+            last_used DATE DEFAULT CURRENT_DATE,
+            card_name TEXT,
+            interpretation TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
@@ -242,6 +254,45 @@ def get_referral_count(user_id):
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else 0
+
+# === ФУНКЦИИ ДЛЯ КАРТЫ ДНЯ ===
+
+def can_get_daily_card(user_id):
+    """Проверить, может ли пользователь получить карту дня сегодня"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT last_used FROM daily_card WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    
+    if not result:
+        return True
+    
+    last_used = result[0]
+    today = datetime.now().date().isoformat()
+    return last_used != today
+
+def save_daily_card(user_id, card_name, interpretation):
+    """Сохранить карту дня для пользователя"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    today = datetime.now().date().isoformat()
+    cursor.execute('''
+        INSERT OR REPLACE INTO daily_card (user_id, last_used, card_name, interpretation, created_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ''', (user_id, today, card_name, interpretation))
+    conn.commit()
+    conn.close()
+
+def get_daily_card(user_id):
+    """Получить карту дня пользователя (если есть на сегодня)"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    today = datetime.now().date().isoformat()
+    cursor.execute('SELECT card_name, interpretation FROM daily_card WHERE user_id = ? AND last_used = ?', (user_id, today))
+    result = cursor.fetchone()
+    conn.close()
+    return result if result else None
 
 # === КАРТЫ ТАРО ===
 
@@ -481,4 +532,19 @@ def format_reading(cards, user_name="Друг", positions=None):
     result += "🌙 Помните: Таро — это инструмент самопознания, а не предсказание судьбы.\n"
     result += "💫 Вы сами создаёте своё будущее каждым своим решением!\n"
     
+    return result
+
+def format_daily_card(card_name, interpretation, user_name="Друг"):
+    """Форматирование карты дня"""
+    result = f"🌅 ВАША КАРТА ДНЯ, {user_name}! 🌅\n"
+    result += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    result += f"✨ Карта: {card_name}\n"
+    result += f"💫 Значение: {interpretation['short']}\n\n"
+    result += f"❤️‍🔥 В любви: {interpretation['love']}\n"
+    result += f"💼 В карьере: {interpretation['career']}\n\n"
+    result += "━━━━━━━━━━━━━━━━━━━━\n"
+    result += "🌟 СОВЕТ НА СЕГОДНЯ 🌟\n"
+    result += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    result += f"{interpretation['advice']}\n\n"
+    result += "💫 Эта карта сопровождает вас весь день. Прислушайтесь к её посланию!\n"
     return result

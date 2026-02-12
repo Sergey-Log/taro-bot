@@ -10,7 +10,8 @@ from utils import (
     get_saved_reading, delete_saved_reading, create_payment, complete_payment,
     get_user_data, save_user_data, get_random_cards, format_reading,
     get_spread_options, get_referral_count, add_referral, mark_subscribed,
-    check_subscribed
+    check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
+    format_daily_card
 )
 
 ASKING_NAME, ASKING_BIRTHDATE = range(2)
@@ -39,10 +40,8 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
         await update.message.reply_text(
             "✨ Добро пожаловать в мир Таро!\n\n"
-            "🔮 Чтобы сделать персонализированный расклад, мне нужны ваши данные:\n"
-            "1. Как вас зовут?\n"
-            "2. Ваша дата рождения (в формате ДД.ММ.ГГГГ)\n\n"
-            "Напишите своё имя:"
+            "🔮 Для персонализированного гадания мне нужно узнать вас немного лучше.\n\n"
+            "💫 Сначала напишите, как вас зовут:"
         )
         return ASKING_NAME
     
@@ -50,6 +49,7 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ {user_data['name']}, ваш баланс: {balance} раскладов"
     
     keyboard = [
+        [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
         [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
@@ -73,7 +73,8 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['temp_name'] = name
     await update.message.reply_text(
         f"✨ Приятно познакомиться, {name}!\n\n"
-        "Теперь напишите вашу дату рождения в формате ДД.ММ.ГГГГ (например, 15.08.1990):"
+        "💫 Теперь напишите вашу дату рождения в формате:\n"
+        "📅 ДД.ММ.ГГГГ (например: 15.08.1990)"
     )
     return ASKING_BIRTHDATE
 
@@ -82,7 +83,9 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not re.match(r'^\d{2}\.\d{2}\.\d{4}$', birthdate):
         await update.message.reply_text(
-            "❌ Неверный формат даты. Напишите в формате ДД.ММ.ГГГГ (например, 15.08.1990):"
+            "❌ Неверный формат даты.\n"
+            "📅 Пожалуйста, напишите в формате ДД.ММ.ГГГГ\n"
+            "Пример: 15.08.1990"
         )
         return ASKING_BIRTHDATE
     
@@ -93,13 +96,15 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if birth_date > today or year < 1900:
             await update.message.reply_text(
-                "❌ Проверьте дату: год должен быть после 1900, а дата — не в будущем."
+                "❌ Проверьте дату: год должен быть после 1900, а дата — не в будущем.\n"
+                "📅 Пример правильной даты: 15.08.1990"
             )
             return ASKING_BIRTHDATE
             
     except ValueError:
         await update.message.reply_text(
-            "❌ Неверная дата. Убедитесь, что дата существует."
+            "❌ Неверная дата. Убедитесь, что дата существует.\n"
+            "📅 Пример: 15.08.1990 (а не 31.02.1990)"
         )
         return ASKING_BIRTHDATE
     
@@ -112,12 +117,13 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     balance = get_balance(user_id)
     await update.message.reply_text(
-        f"✅ Данные сохранены!\n\n"
-        f"✨ {name}, ваш баланс: {balance} раскладов\n"
-        f"🎴 Готовы к первому раскладу?"
+        f"✅ Отлично, {name}! Данные сохранены.\n\n"
+        f"✨ Ваш баланс: {balance} раскладов\n"
+        f"🎴 Готовы к первому гаданию?"
     )
     
     keyboard = [
+        [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
         [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
@@ -181,12 +187,57 @@ start_handler = ConversationHandler(
     allow_reentry=True
 )
 
-# === ОСТАЛЬНЫЕ ОБРАБОТЧИКИ (без изменений) ===
+# === ОСТАЛЬНЫЕ ОБРАБОТЧИКИ ===
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
+    
+    # Обработка карты дня
+    if query.data == 'daily_card':
+        user_data = get_user_data(user_id)
+        if not user_data or not user_data.get('name'):
+            await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
+            return
+        
+        if can_get_daily_card(user_id):
+            card = get_random_cards(1)[0]
+            card_name, interpretation = card
+            reading = format_daily_card(card_name, interpretation, user_data['name'])
+            save_daily_card(user_id, card_name, reading)
+            
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text=reading
+            )
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text="🌅 Карта дня получена! Возвращайтесь завтра за новой картой.\n\n💫 Хотите сделать подробный расклад? Нажмите «🎴 Сделать расклад»",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
+                    [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+                ])
+            )
+        else:
+            existing_card = get_daily_card(user_id)
+            if existing_card:
+                card_name, interpretation = existing_card
+                await query.edit_message_text(
+                    text=f"🌅 ВЫ УЖЕ ПОЛУЧИЛИ КАРТУ ДНЯ СЕГОДНЯ!\n\n{interpretation}\n\n💫 Вернитесь завтра за новой картой или сделайте подробный расклад:",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
+                        [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+                    ])
+                )
+            else:
+                await query.edit_message_text(
+                    text="🌅 Вы уже получили карту дня сегодня!\nВозвращайтесь завтра за новой картой ☀️",
+                    reply_markup=InlineKeyboardMarkup([
+                        [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+                    ])
+                )
+        return
     
     # Обработка выбора расклада
     if query.data.startswith('spread_'):
@@ -207,8 +258,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # Обработка сохранения расклада
-    if query.data == 'save_last_reading':
+    # ... остальные обработчики кнопок (без изменений) ...
+    # Сокращу для краткости — все остальные функции работают как раньше
+    
+    elif query.data == 'save_last_reading':
         if 'pending_readings' in context.user_data and user_id in context.user_data['pending_readings']:
             cards, reading_text = context.user_data['pending_readings'][user_id]
             slots = get_saved_slots(user_id)
@@ -232,7 +285,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await query.edit_message_text(text="❌ Нет расклада для сохранения. Сначала сделайте расклад!")
     
-    # ... остальные обработчики кнопок (без изменений) ...
     elif query.data.startswith('delete_slot_'):
         slot_num = int(query.data.split('_')[2])
         if delete_saved_reading(user_id, slot_num):
@@ -483,16 +535,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = (
             "❓ ПОМОЩЬ ❓\n"
             "\n✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
-            "1. Нажмите «Сделать расклад».\n"
-            "2. Выберите тип расклада (карта дня, отношения, карьера и т.д.).\n"
-            "3. Получите персонализированный расклад из 3+ карт.\n"
-            "4. Нажмите «💾 Сохранить расклад», чтобы не потерять его.\n"
+            "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день)\n"
+            "• 🎴 Сделать расклад — подробный расклад из 3+ карт (списывается с баланса)\n"
+            "• 💾 Сохранить расклад — сохраните результат в одну из 3 ячеек\n"
             "\n🗄️ СОХРАНЕНИЕ РАСКЛАДОВ:\n"
             "• У вас есть 3 ячейки для сохранения раскладов.\n"
             "• Расклады НЕ сохраняются автоматически — только по вашему выбору.\n"
             "• Если все ячейки заняты — сначала удалите старый расклад.\n"
             "\n⚖️ БАЛАНС:\n"
             "• При регистрации: 1 бесплатный расклад.\n"
+            "• 🌅 Карта дня — всегда бесплатно, 1 раз в день.\n"
             "• За друга: +1 расклад.\n"
             "• За подписку: +3 расклада.\n"
             "• Покупка пакетов со скидкой до 15%.\n"
@@ -514,6 +566,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         balance = get_balance(user_id)
         message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ {user_data['name']}, ваш баланс: {balance} раскладов"
         keyboard = [
+            [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
             [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
             [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
             [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
@@ -548,6 +601,9 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     spreads = get_spread_options()
+    # Убираем карту дня из списка платных раскладов
+    spreads.pop('daily', None)
+    
     message = "🎴 ВЫБЕРИТЕ ТИП РАСКЛАДА 🎴\n\n"
     keyboard = []
     
