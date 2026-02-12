@@ -561,6 +561,7 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text=message, reply_markup=reply_markup)
 
+
 async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -578,6 +579,7 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
         await query.edit_message_text(text="❌ У вас недостаточно раскладов. Пополните баланс!")
         return
     
+    # ✅ ИСПРАВЛЕНО: списываем ВСЕГДА 1 расклад (независимо от количества карт)
     if not decrease_balance(user_id, 1):
         await query.edit_message_text(text="❌ Ошибка при списании расклада. Попробуйте позже.")
         return
@@ -586,14 +588,14 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     spreads = get_spread_options()
     
     if spread_id not in spreads:
-        await query.edit_message_text(text="❌ Неверный тип расклада.")
+        await query.edit_message_text(text=f"❌ Неверный тип расклада: {spread_id}. Доступные: {', '.join(spreads.keys())}")
         return
     
     spread_info = spreads[spread_id]
     cards = get_random_cards(spread_info['cards_count'])
     reading = format_reading(cards, user_data['name'], spread_info['positions'])
     
-    if 'pending_readings' not in context.user_data:
+    if 'pending_readings' not in context.user_
         context.user_data['pending_readings'] = {}
     context.user_data['pending_readings'][user_id] = (cards, reading)
     
