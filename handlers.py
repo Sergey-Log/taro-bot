@@ -658,7 +658,17 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
         context.user_data['pending_readings'] = {}
     context.user_data['pending_readings'][user_id] = (cards, reading)
     
-    await context.bot.send_message(chat_id=query.message.chat_id, text=reading)
+    # ✅ ИСПРАВЛЕНО: разбивка длинного сообщения на части (лимит Telegram = 4096 символов)
+    max_length = 4000
+    if len(reading) > max_length:
+        parts = [reading[i:i+max_length] for i in range(0, len(reading), max_length)]
+        for i, part in enumerate(parts):
+            if i == 0:
+                await context.bot.send_message(chat_id=query.message.chat_id, text=part)
+            else:
+                await context.bot.send_message(chat_id=query.message.chat_id, text=part)
+    else:
+        await context.bot.send_message(chat_id=query.message.chat_id, text=reading)
     
     keyboard = [
         [InlineKeyboardButton("💾 Сохранить расклад", callback_data='save_last_reading')],

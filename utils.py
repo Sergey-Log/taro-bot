@@ -3,13 +3,10 @@ import random
 import re
 from datetime import datetime, timedelta
 
-# === РАБОТА С БАЗОЙ ДАННЫХ ===
-
 def init_db():
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     
-    # Таблица пользователей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -21,7 +18,6 @@ def init_db():
         )
     ''')
     
-    # Таблица рефералов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS referrals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,7 +27,6 @@ def init_db():
         )
     ''')
     
-    # Таблица сохранённых раскладов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS saved_readings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +39,6 @@ def init_db():
         )
     ''')
     
-    # Таблица платежей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS payments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -60,7 +54,6 @@ def init_db():
         )
     ''')
     
-    # Таблица данных пользователя (имя, дата рождения)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_data (
             user_id INTEGER PRIMARY KEY,
@@ -70,7 +63,6 @@ def init_db():
         )
     ''')
     
-    # Таблица для отслеживания карты дня
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS daily_card (
             user_id INTEGER PRIMARY KEY,
@@ -85,7 +77,6 @@ def init_db():
     conn.close()
 
 def add_user(user_id, username, first_name):
-    """Добавить пользователя в базу"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('INSERT OR IGNORE INTO users (user_id, username, first_name, balance) VALUES (?, ?, ?, 1)', (user_id, username, first_name))
@@ -93,7 +84,6 @@ def add_user(user_id, username, first_name):
     conn.close()
 
 def get_balance(user_id):
-    """Получить текущий баланс пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
@@ -102,7 +92,6 @@ def get_balance(user_id):
     return result[0] if result else 1
 
 def decrease_balance(user_id, amount=1):
-    """Уменьшить баланс на указанное количество"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ? AND balance >= ?', (amount, user_id, amount))
@@ -111,7 +100,6 @@ def decrease_balance(user_id, amount=1):
     return cursor.rowcount > 0
 
 def increase_balance(user_id, amount=1):
-    """Увеличить баланс на указанное количество"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (amount, user_id))
@@ -119,7 +107,6 @@ def increase_balance(user_id, amount=1):
     conn.close()
 
 def add_referral(referrer_id, referred_id):
-    """Добавить реферала (+1 к балансу реферера)"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT id FROM referrals WHERE referred_id = ?', (referred_id,))
@@ -133,7 +120,6 @@ def add_referral(referrer_id, referred_id):
     return True
 
 def mark_subscribed(user_id):
-    """Отметить подписку на канал (+3 к балансу)"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET subscribed = 1, balance = balance + 3 WHERE user_id = ?', (user_id,))
@@ -142,7 +128,6 @@ def mark_subscribed(user_id):
     return True
 
 def check_subscribed(user_id):
-    """Проверить, подписан ли пользователь на канал"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT subscribed FROM users WHERE user_id = ?', (user_id,))
@@ -151,7 +136,6 @@ def check_subscribed(user_id):
     return result[0] if result else 0
 
 def get_saved_slots(user_id):
-    """Получить список занятых ячеек пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT slot, timestamp FROM saved_readings WHERE user_id = ? ORDER BY slot ASC', (user_id,))
@@ -160,7 +144,6 @@ def get_saved_slots(user_id):
     return {row[0]: row[1][:16] for row in results}
 
 def save_reading(user_id, cards, interpretation, slot=None):
-    """Сохранить расклад в ячейку"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     if slot is None:
@@ -179,7 +162,6 @@ def save_reading(user_id, cards, interpretation, slot=None):
     return slot
 
 def get_saved_reading(user_id, slot):
-    """Получить сохранённый расклад из ячейки"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT cards, interpretation, timestamp FROM saved_readings WHERE user_id = ? AND slot = ?', (user_id, slot))
@@ -188,7 +170,6 @@ def get_saved_reading(user_id, slot):
     return result
 
 def delete_saved_reading(user_id, slot):
-    """Удалить расклад из ячейки"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('DELETE FROM saved_readings WHERE user_id = ? AND slot = ?', (user_id, slot))
@@ -197,7 +178,6 @@ def delete_saved_reading(user_id, slot):
     return cursor.rowcount > 0
 
 def create_payment(user_id, amount_rub, pack_size, payment_id, crypto_currency, crypto_amount):
-    """Создать запись о платеже"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -208,7 +188,6 @@ def create_payment(user_id, amount_rub, pack_size, payment_id, crypto_currency, 
     conn.close()
 
 def complete_payment(payment_id, tx_hash):
-    """Завершить платёж и начислить баланс"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT user_id, pack_size FROM payments WHERE payment_id = ? AND status = "waiting"', (payment_id,))
@@ -225,7 +204,6 @@ def complete_payment(payment_id, tx_hash):
         return None, None
 
 def save_user_data(user_id, name, birthdate):
-    """Сохранить/обновить данные пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -236,7 +214,6 @@ def save_user_data(user_id, name, birthdate):
     conn.close()
 
 def get_user_data(user_id):
-    """Получить данные пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT name, birthdate FROM user_data WHERE user_id = ?', (user_id,))
@@ -247,7 +224,6 @@ def get_user_data(user_id):
     return None
 
 def get_referral_count(user_id):
-    """Получить количество рефералов пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT COUNT(*) FROM referrals WHERE referrer_id = ?', (user_id,))
@@ -255,10 +231,7 @@ def get_referral_count(user_id):
     conn.close()
     return result[0] if result else 0
 
-# === ФУНКЦИИ ДЛЯ КАРТЫ ДНЯ ===
-
 def can_get_daily_card(user_id):
-    """Проверить, может ли пользователь получить карту дня сегодня"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT last_used FROM daily_card WHERE user_id = ?', (user_id,))
@@ -273,7 +246,6 @@ def can_get_daily_card(user_id):
     return last_used != today
 
 def save_daily_card(user_id, card_name, interpretation):
-    """Сохранить карту дня для пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     today = datetime.now().date().isoformat()
@@ -285,7 +257,6 @@ def save_daily_card(user_id, card_name, interpretation):
     conn.close()
 
 def get_daily_card(user_id):
-    """Получить карту дня пользователя (если есть на сегодня)"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     today = datetime.now().date().isoformat()
@@ -293,8 +264,6 @@ def get_daily_card(user_id):
     result = cursor.fetchone()
     conn.close()
     return result if result else None
-
-# === РАСШИРЕННЫЕ КАРТЫ ТАРО ===
 
 MAJOR_ARCANA = {
     "Шут": {
@@ -432,14 +401,12 @@ MAJOR_ARCANA = {
 }
 
 def get_random_cards(count=3):
-    """Получить случайные карты для расклада"""
     if count > len(MAJOR_ARCANA):
         count = len(MAJOR_ARCANA)
     cards = random.sample(list(MAJOR_ARCANA.keys()), count)
     return [(card, MAJOR_ARCANA[card]) for card in cards]
 
 def get_spread_options():
-    """Варианты раскладов"""
     return {
         'past_present_future': {
             'name': '🎴 Прошлое-Настоящее-Будущее',
@@ -482,12 +449,8 @@ def get_spread_options():
         }
     }
 
-# ... (начало файла без изменений) ...
-
 def format_reading(cards, user_name="Друг", positions=None):
-    """Форматирование расклада с ОДНИМ общим советом в конце"""
     if positions is None:
-        # Автоматическое определение позиций по количеству карт
         count = len(cards)
         if count == 1:
             positions = ["🎴 СОВЕТ НА СЕГОДНЯ"]
@@ -498,7 +461,6 @@ def format_reading(cards, user_name="Друг", positions=None):
         elif count == 5:
             positions = ["🎴 ВАША ЭНЕРГИЯ", "🎴 ЭНЕРГИЯ ПАРТНЁРА", "🎴 ДИНАМИКА СВЯЗИ", "🎴 ПРЕПЯТСТВИЯ", "🎴 СОВЕТ ТАРО"]
         elif count == 10:
-            # ✅ ИСПРАВЛЕНО: точное совпадение с 10 позициями для кельтского креста
             positions = [
                 "🎴 ТЕКУЩАЯ СИТУАЦИЯ", "🎴 ПРЕПЯТСТВИЕ", "🎴 СОЗНАНИЕ", 
                 "🎴 БЕССОЗНАТЕЛЬНОЕ", "🎴 ПРОШЛОЕ", "🎴 БУДУЩЕЕ",
@@ -508,7 +470,6 @@ def format_reading(cards, user_name="Друг", positions=None):
         else:
             positions = [f"🎴 КАРТА {i+1}" for i in range(count)]
     
-    # ✅ ИСПРАВЛЕНО: проверка длины positions == длине карт
     if len(positions) != len(cards):
         raise ValueError(f"Несоответствие позиций ({len(positions)}) и карт ({len(cards)})")
     
@@ -521,17 +482,14 @@ def format_reading(cards, user_name="Друг", positions=None):
         result += f"✨ КАРТА: {name}\n"
         result += f"💫 ГЛУБИННОЕ ЗНАЧЕНИЕ:\n{interpretation['short']}\n\n"
         
-        # Для раскладов с >1 картой добавляем интерпретации по сферам
         if len(cards) > 1:
             result += f"❤️‍🔥 В ЛЮБВИ И ОТНОШЕНИЯХ:\n{interpretation['love']}\n\n"
             result += f"💼 В КАРЬЕРЕ И ДЕНЬГАХ:\n{interpretation['career']}\n\n"
     
-    # ОДИН ОБЩИЙ СОВЕТ НА ВЕСЬ РАСКЛАД
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     result += "🌟 ГЛУБОКИЙ ПЕРСОНАЛЬНЫЙ СОВЕТ ТАРО 🌟\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     
-    # Генерируем совет на основе всех карт
     card_names = [card[0] for card in cards]
     advice_parts = []
     
@@ -553,11 +511,9 @@ def format_reading(cards, user_name="Друг", positions=None):
     if "Суд" in card_names or "Мир" in card_names:
         advice_parts.append("🎉 Вы завершаете важный цикл в жизни. Подведите итоги, поблагодарите за опыт и смело открывайте новую главу. Вас ждёт гармония, целостность и достижение долгожданной цели. Помните: каждый конец — это новое начало, а каждое завершение — повод для праздника.")
     
-    # Если нет специфических советов — общий
     if not advice_parts:
         advice_parts.append("💫 Помните: карты Таро показывают не предопределённое будущее, а возможности и потенциал текущего момента. Выбор всегда остаётся за вами. Доверяйте себе, слушайте своё сердце и действуйте с любовью и осознанностью. Вы сильнее, мудрее и способнее, чем думаете!")
     
-    # Объединяем советы в один текст
     result += "\n\n".join(advice_parts)
     result += "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     result += "🌙 ВАЖНОЕ НАПОМИНАНИЕ:\n"
@@ -568,10 +524,7 @@ def format_reading(cards, user_name="Друг", positions=None):
     
     return result
 
-# ... (весь файл без изменений, кроме этой функции) ...
-
 def format_daily_card(card_name, interpretation, user_name="Друг"):
-    """Форматирование карты дня БЕЗ разделов любви и карьеры"""
     result = f"🌅 ВАША КАРТА ДНЯ, {user_name}! 🌅\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     result += f"✨ КАРТА: {card_name}\n"

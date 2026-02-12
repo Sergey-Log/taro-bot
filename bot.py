@@ -18,7 +18,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v5.9"
+    return "✅ v5.10"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -40,7 +40,6 @@ def main():
     
     application = Application.builder().token(TOKEN).post_init(post_init).build()
     
-    # Регистрация обработчиков
     application.add_handler(start_handler)
     application.add_handler(CommandHandler("daily", daily_command))
     application.add_handler(CommandHandler("balance", balance_command))
@@ -49,7 +48,7 @@ def main():
     application.add_handler(CommandHandler("terms", terms_command))
     application.add_handler(CallbackQueryHandler(button_handler))
     
-    print("✅ Бот запущен v5.9 (UTF-8 + команды)")
+    print("✅ Бот запущен v5.10 (кельтский крест + UTF-8 + команды)")
     application.run_polling()
 
 def run_flask():
