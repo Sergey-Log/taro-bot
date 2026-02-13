@@ -717,7 +717,7 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     # Сохраняем расклад для возможного сохранения
-    if 'pending_readings' not in context.user_
+    if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
     
     # Формируем полный расклад для сохранения
