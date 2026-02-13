@@ -48,7 +48,7 @@ def main():
     application.add_handler(CommandHandler("terms", terms_command))
     application.add_handler(CallbackQueryHandler(button_handler))
     
-    print("✅ Бот запущен v5.10 (кельтский крест + UTF-8 + команды)")
+    print("✅ Бот запущен v5.12 (многоэтапные расклады + уникальные описания)")
     application.run_polling()
 
 def run_flask():
