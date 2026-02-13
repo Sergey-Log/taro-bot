@@ -555,3 +555,12 @@ def format_reading_advice(cards, spread_id):
     result += "Вы — творец своей жизни! 💫\n"
     
     return result
+
+def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
+    """Совместимая обёртка для старого кода (сохранение раскладов)"""
+    # Формируем полный текст расклада для сохранения
+    intro = f"🔮 ПЕРСОНАЛИЗИРОВАННЫЙ РАСКЛАД ДЛЯ {user_name.upper()} 🔮\n"
+    cards_text = format_reading_cards(cards, user_name, positions, spread_id)
+    advice_text = format_reading_advice(cards, spread_id)
+    
+    return intro + "\n" + cards_text + "\n\n" + advice_text
