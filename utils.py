@@ -406,10 +406,7 @@ def get_random_cards(count=3):
     cards = random.sample(list(MAJOR_ARCANA.keys()), count)
     return [(card, MAJOR_ARCANA[card]) for card in cards]
 
-# ... (весь предыдущий код без изменений до функции get_spread_options) ...
-
 def get_spread_options():
-    """Варианты раскладов с уникальными описаниями"""
     return {
         'past_present_future': {
             'name': '🎴 Прошлое-Настоящее-Будущее',
@@ -456,6 +453,20 @@ def get_spread_options():
             'positions': ["🎴 СОВЕТ НА СЕГОДНЯ"]
         }
     }
+
+def format_daily_card(card_name, interpretation, user_name="Друг"):
+    """Форматирование карты дня БЕЗ разделов любви и карьеры"""
+    result = f"🌅 ВАША КАРТА ДНЯ, {user_name}! 🌅\n"
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    result += f"✨ КАРТА: {card_name}\n"
+    result += f"💫 ГЛУБИННОЕ ЗНАЧЕНИЕ:\n{interpretation['short']}\n\n"
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    result += "🌟 СОВЕТ ТАРО НА СЕГОДНЯ 🌟\n"
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    result += f"{interpretation['advice']}\n\n"
+    result += "💫 Эта карта сопровождает вас весь день.\n"
+    result += "Прислушайтесь к её посланию в ключевые моменты!\n"
+    return result
 
 def format_reading_intro(spread_id, user_name):
     """Форматирование вводной части расклада (этап 1)"""
@@ -554,29 +565,6 @@ def format_reading_advice(cards, spread_id):
     result += "Используйте расклад как инструмент рефлексии, а не как приговор.\n"
     result += "Вы — творец своей жизни! 💫\n"
     
-    return result
-
-def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
-    """Совместимая обёртка для старого кода (сохранение раскладов)"""
-    # Формируем полный текст расклада для сохранения
-    intro = f"🔮 ПЕРСОНАЛИЗИРОВАННЫЙ РАСКЛАД ДЛЯ {user_name.upper()} 🔮\n"
-    cards_text = format_reading_cards(cards, user_name, positions, spread_id)
-    advice_text = format_reading_advice(cards, spread_id)
-    
-    return intro + "\n" + cards_text + "\n\n" + advice_text
-
-def format_daily_card(card_name, interpretation, user_name="Друг"):
-    """Форматирование карты дня БЕЗ разделов любви и карьеры"""
-    result = f"🌅 ВАША КАРТА ДНЯ, {user_name}! 🌅\n"
-    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    result += f"✨ КАРТА: {card_name}\n"
-    result += f"💫 ГЛУБИННОЕ ЗНАЧЕНИЕ:\n{interpretation['short']}\n\n"
-    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    result += "🌟 СОВЕТ ТАРО НА СЕГОДНЯ 🌟\n"
-    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    result += f"{interpretation['advice']}\n\n"
-    result += "💫 Эта карта сопровождает вас весь день.\n"
-    result += "Прислушайтесь к её посланию в ключевые моменты!\n"
     return result
 
 def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
