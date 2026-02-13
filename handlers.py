@@ -11,7 +11,7 @@ from utils import (
     get_user_data, save_user_data, get_random_cards, format_reading,
     get_spread_options, get_referral_count, add_referral, mark_subscribed,
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
-    format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice
+    format_daily_card  # ← ЭТА СТРОКА ДОЛЖНА БЫТЬ
 )
 
 ASKING_NAME, ASKING_BIRTHDATE = range(2)

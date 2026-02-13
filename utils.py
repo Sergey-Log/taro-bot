@@ -564,3 +564,70 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
     advice_text = format_reading_advice(cards, spread_id)
     
     return intro + "\n" + cards_text + "\n\n" + advice_text
+
+def format_daily_card(card_name, interpretation, user_name="Друг"):
+    """Форматирование карты дня БЕЗ разделов любви и карьеры"""
+    result = f"🌅 ВАША КАРТА ДНЯ, {user_name}! 🌅\n"
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    result += f"✨ КАРТА: {card_name}\n"
+    result += f"💫 ГЛУБИННОЕ ЗНАЧЕНИЕ:\n{interpretation['short']}\n\n"
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    result += "🌟 СОВЕТ ТАРО НА СЕГОДНЯ 🌟\n"
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    result += f"{interpretation['advice']}\n\n"
+    result += "💫 Эта карта сопровождает вас весь день.\n"
+    result += "Прислушайтесь к её посланию в ключевые моменты!\n"
+    return result
+
+def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
+    """Совместимая обёртка для старого кода (сохранение раскладов)"""
+    # Автоопределение позиций если не заданы
+    if positions is None:
+        count = len(cards)
+        if count == 1:
+            positions = ["🎴 СОВЕТ НА СЕГОДНЯ"]
+        elif count == 3:
+            positions = ["🎴 ПРОШЛОЕ", "🎴 НАСТОЯЩЕЕ", "🎴 БУДУЩЕЕ"]
+        elif count == 4:
+            positions = ["🎴 ТЕКУЩАЯ СИТУАЦИЯ", "🎴 ВОЗМОЖНОСТИ", "🎴 ПРЕПЯТСТВИЯ", "🎴 РЕКОМЕНДАЦИЯ"]
+        elif count == 5:
+            positions = ["🎴 ВАША ЭНЕРГИЯ", "🎴 ЭНЕРГИЯ ПАРТНЁРА", "🎴 ДИНАМИКА СВЯЗИ", "🎴 ПРЕПЯТСТВИЯ", "🎴 СОВЕТ ТАРО"]
+        elif count == 10:
+            positions = [
+                "🎴 ТЕКУЩАЯ СИТУАЦИЯ", "🎴 ПРЕПЯТСТВИЕ", "🎴 СОЗНАНИЕ", 
+                "🎴 БЕССОЗНАТЕЛЬНОЕ", "🎴 ПРОШЛОЕ", "🎴 БУДУЩЕЕ",
+                "🎴 ВАШ ПОДХОД", "🎴 ВНЕШНЕЕ ВЛИЯНИЕ", "🎴 НАДЕЖДЫ И СТРАХИ",
+                "🎴 ИТОГОВЫЙ РЕЗУЛЬТАТ"
+            ]
+        else:
+            positions = [f"🎴 КАРТА {i+1}" for i in range(count)]
+    
+    # Формируем базовый текст расклада
+    result = f"🔮 ПЕРСОНАЛИЗИРОВАННЫЙ РАСКЛАД ДЛЯ {user_name.upper()} 🔮\n"
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    
+    for i, (pos, (name, interpretation)) in enumerate(zip(positions, cards)):
+        result += f"{pos}\n"
+        result += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        result += f"✨ КАРТА: {name}\n"
+        result += f"💫 ГЛУБИННОЕ ЗНАЧЕНИЕ:\n{interpretation['short']}\n\n"
+        
+        # Для раскладов кроме кельтского креста и прошлое-настоящее-будущее добавляем любовь/карьеру
+        if spread_id not in ['celtic_cross', 'past_present_future']:
+            if spread_id == 'relationship':
+                result += f"❤️‍🔥 В ЛЮБВИ И ОТНОШЕНИЯХ:\n{interpretation['love']}\n\n"
+            elif spread_id == 'career':
+                result += f"💼 В КАРЬЕРЕ И ДЕНЬГАХ:\n{interpretation['career']}\n\n"
+            else:
+                result += f"❤️‍🔥 В ЛЮБВИ: {interpretation['love']}\n"
+                result += f"💼 В КАРЬЕРЕ: {interpretation['career']}\n\n"
+    
+    # Добавляем короткий совет
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    result += "🌟 СОВЕТ ТАРО 🌟\n"
+    result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    result += "💫 Доверяйте своей интуиции. Вы сильнее, чем думаете!\n"
+    result += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    result += "🌙 Таро — инструмент самопознания 💫\n"
+    
+    return result
