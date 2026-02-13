@@ -312,7 +312,7 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     reading_data = context.user_data.get('current_reading', {})
-    if not reading_  # ← ИСПРАВЛЕНО: полное имя переменной
+    if not reading_data:  # ← ИСПРАВЛЕНО: полное имя переменной
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
     
@@ -335,7 +335,7 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     reading_data = context.user_data.get('current_reading', {})
-    if not reading_  # ← ИСПРАВЛЕНО: полное имя переменной
+    if not reading_data:  # ← ИСПРАВЛЕНО: полное имя переменной
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
     
