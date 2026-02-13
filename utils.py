@@ -497,44 +497,18 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
         elif spread_id == 'career':
             result += f"💼 В КАРЬЕРЕ И ДЕНЬГАХ:\n{interpretation['career']}\n\n"
         
-        # 🔹 ОСТАЛЬНЫЕ РАСКЛАДЫ (если будут): оба раздела
+        # 🔹 ОСТАЛЬНЫЕ РАСКЛАДЫ: оба раздела
         else:
             result += f"❤️‍🔥 В ЛЮБВИ И ОТНОШЕНИЯХ:\n{interpretation['love']}\n\n"
             result += f"💼 В КАРЬЕРЕ И ДЕНЬГАХ:\n{interpretation['career']}\n\n"
     
-    # ОБЩИЙ СОВЕТ ДЛЯ ВСЕХ РАСКЛАДОВ
+    # ОБЩИЙ СОВЕТ
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    result += "🌟 ГЛУБОКИЙ ПЕРСОНАЛЬНЫЙ СОВЕТ ТАРО 🌟\n"
+    result += "🌟 СОВЕТ ТАРО 🌟\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-    
-    card_names = [card[0] for card in cards]
-    advice_parts = []
-    
-    if "Шут" in card_names or "Маг" in card_names:
-        advice_parts.append("✨ Вы находитесь на пороге новых возможностей. Доверяйте своей интуиции.")
-    
-    if "Сила" in card_names or "Отшельник" in card_names:
-        advice_parts.append("💫 Сейчас важнее всего внутренняя работа. Уделите время саморефлексии.")
-    
-    if "Колесница" in card_names or "Император" in card_names:
-        advice_parts.append("🔥 Ваша сила — в дисциплине и целеустремлённости.")
-    
-    if "Луна" in card_names or "Башня" in card_names:
-        advice_parts.append("🌙 Будьте готовы к неожиданным переменам. Доверяйте процессу трансформации.")
-    
-    if "Солнце" in card_names or "Звезда" in card_names:
-        advice_parts.append("☀️ Вас ждёт период света и гармонии. Радуйтесь мелочам.")
-    
-    if "Суд" in card_names or "Мир" in card_names:
-        advice_parts.append("🎉 Вы завершаете важный цикл. Подведите итоги и откройте новую главу.")
-    
-    if not advice_parts:
-        advice_parts.append("💫 Помните: карты Таро показывают возможности, а выбор всегда за вами.")
-    
-    result += "\n\n".join(advice_parts)
-    result += "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-    result += "🌙 Таро — инструмент самопознания, а не предсказание будущего.\n"
-    result += "Вы сами создаёте свою реальность каждым выбором! 💫\n"
+    result += "💫 Доверяйте своей интуиции. Вы сильнее, чем думаете!\n"
+    result += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+    result += "🌙 Таро — инструмент самопознания 💫\n"
     
     return result
 

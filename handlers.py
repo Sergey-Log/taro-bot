@@ -652,7 +652,7 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     
     spread_info = spreads[spread_id]
     cards = get_random_cards(spread_info['cards_count'])
-    reading = format_reading(cards, user_data['name'], spread_info['positions'])
+    reading = format_reading(cards, user_data['name'], spread_info['positions'], spread_id)  # ← ДОБАВЛЕНО spread_id
     
     if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
