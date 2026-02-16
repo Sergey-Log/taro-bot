@@ -7,7 +7,8 @@ import threading
 
 from handlers import (
     start_handler, button_handler, history_command, terms_command,
-    daily_command, balance_command, help_command
+    daily_command, balance_command, help_command, menu_command,
+    reading_step_1_handler, reading_step_2_handler
 )
 from utils import init_db
 
@@ -18,7 +19,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v5.10"
+    return "✅ v5.13"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -27,6 +28,7 @@ def webhook():
 async def post_init(application):
     await application.bot.set_my_commands([
         BotCommand("start", "🔮 Начать работу с ботом"),
+        BotCommand("menu", "🏠 Главное меню"),
         BotCommand("daily", "🌅 Карта дня (бесплатно)"),
         BotCommand("balance", "⚖️ Проверить баланс"),
         BotCommand("help", "❓ Помощь и инструкции")
@@ -40,15 +42,21 @@ def main():
     
     application = Application.builder().token(TOKEN).post_init(post_init).build()
     
+    # Регистрация ВСЕХ обработчиков
     application.add_handler(start_handler)
+    application.add_handler(CommandHandler("menu", menu_command))
     application.add_handler(CommandHandler("daily", daily_command))
     application.add_handler(CommandHandler("balance", balance_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("terms", terms_command))
+    
+    # Глобальные обработчики для кнопок "Далее"
+    application.add_handler(CallbackQueryHandler(reading_step_1_handler, pattern='^reading_step_1$'))
+    application.add_handler(CallbackQueryHandler(reading_step_2_handler, pattern='^reading_step_2$'))
     application.add_handler(CallbackQueryHandler(button_handler))
     
-    print("✅ Бот запущен v5.12 (многоэтапные расклады + уникальные описания)")
+    print("✅ Бот запущен v5.13 (кнопка Далее + команда /menu)")
     application.run_polling()
 
 def run_flask():

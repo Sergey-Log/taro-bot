@@ -255,8 +255,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
-# === ФУНКЦИИ МНОГОЭТАПНОГО РАСКЛАДА ===
-
 async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -274,7 +272,6 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
         await query.edit_message_text(text="❌ У вас недостаточно раскладов. Пополните баланс!")
         return
     
-    # ✅ Списываем 1 расклад ДО начала расклада
     if not decrease_balance(user_id, 1):
         await query.edit_message_text(text="❌ Ошибка при списании расклада. Попробуйте позже.")
         return
@@ -289,7 +286,6 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     spread_info = spreads[spread_id]
     cards = get_random_cards(spread_info['cards_count'])
     
-    # ✅ Сохраняем данные расклада в контексте
     context.user_data['current_reading'] = {
         'spread_id': spread_id,
         'cards': cards,
@@ -298,7 +294,6 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
         'balance_after': new_balance
     }
     
-    # ✅ Этап 1: Вводная часть с описанием
     intro_text = format_reading_intro(spread_id, user_data['name'])
     keyboard = [[InlineKeyboardButton("➡️ Далее", callback_data='reading_step_1')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -312,7 +307,7 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     reading_data = context.user_data.get('current_reading', {})
-    if not reading_data:  # ← ИСПРАВЛЕНО: полное имя переменной
+    if not reading_data:
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
     
@@ -344,11 +339,9 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reading_data['spread_id']
     )
     
-    # Сохраняем расклад для возможного сохранения
     if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
     
-    # Формируем полный расклад для сохранения
     full_reading = (
         format_reading_cards(
             reading_data['cards'],
@@ -371,22 +364,18 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # Отправляем совет как НОВОЕ сообщение
     await context.bot.send_message(
         chat_id=query.message.chat_id,
         text=advice_text,
         reply_markup=reply_markup
     )
     
-    # Удаляем предыдущее сообщение с картами
     try:
         await query.message.delete()
     except:
         pass
     
     return READING_ADVICE
-
-# === ОСНОВНОЙ ОБРАБОТЧИК КНОПОК ===
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -745,8 +734,6 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text=message, reply_markup=reply_markup)
 
-# === СОЗДАНИЕ ХЕНДЛЕРА (ПОСЛЕ ВСЕХ ФУНКЦИЙ) ===
-
 start_handler = ConversationHandler(
     entry_points=[CommandHandler("start", _start)],
     states={
@@ -754,8 +741,43 @@ start_handler = ConversationHandler(
         ASKING_BIRTHDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_birthdate)],
         READING_INTRO: [CallbackQueryHandler(reading_step_1, pattern='^reading_step_1$')],
         READING_CARDS: [CallbackQueryHandler(reading_step_2, pattern='^reading_step_2$')],
-        READING_ADVICE: [CallbackQueryHandler(button_handler)]  # Возвращаемся к основному обработчику
+        READING_ADVICE: [CallbackQueryHandler(button_handler)]
     },
     fallbacks=[CommandHandler("start", _start)],
     allow_reentry=True
 )
+
+# === НОВЫЕ ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК "ДАЛЕЕ" ===
+
+async def reading_step_1_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Глобальный обработчик для кнопки 'Далее' (этап 1 → этап 2)"""
+    return await reading_step_1(update, context)
+
+async def reading_step_2_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Глобальный обработчик для кнопки 'Далее' (этап 2 → этап 3)"""
+    return await reading_step_2(update, context)
+
+# === КОМАНДА /menu ===
+
+async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /menu - возвращает в главное меню"""
+    user_id = update.effective_user.id
+    user_data = get_user_data(user_id)
+    
+    if not user_data or not user_data.get('name'):
+        await update.message.reply_text("Сначала укажите имя и дату рождения через /start")
+        return
+    
+    balance = get_balance(user_id)
+    message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ {user_data['name']}, ваш баланс: {balance} раскладов"
+    
+    keyboard = [
+        [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
+        [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
+        [InlineKeyboardButton("❓ Помощь", callback_data='help')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(text=message, reply_markup=reply_markup)
