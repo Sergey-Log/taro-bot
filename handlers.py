@@ -14,7 +14,6 @@ from utils import (
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice
 )
 
-# === КОНСТАНТЫ СОСТОЯНИЙ (должны быть ОПРЕДЕЛЕНЫ ПЕРВЫМИ) ===
 ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE = range(5)
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,7 +63,7 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("? Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
         return ASKING_NAME
     
-    if not re.match(r'^[а-яА-Яa-zA-Z\s]+$', name):
+    if not re.match(r'^[a-zA-Zа-яА-ЯёЁ\s]+$', name):
         await update.message.reply_text("? Имя может содержать только буквы и пробелы. Попробуйте ещё раз:")
         return ASKING_NAME
     
@@ -301,10 +300,7 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     await query.edit_message_text(text=intro_text, reply_markup=reply_markup)
     return READING_INTRO
 
-# ... (начало файла без изменений) ...
-
 async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Этап 2: Показ карт и значений + кнопка Назад"""
     query = update.callback_query
     await query.answer()
     
@@ -320,7 +316,6 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reading_data['spread_id']
     )
     
-    # ? ДОБАВЛЕНА КНОПКА "НАЗАД"
     keyboard = [
         [InlineKeyboardButton("?? Назад", callback_data='back_to_spread_choice')],
         [InlineKeyboardButton("?? Далее", callback_data='reading_step_2')]
@@ -331,7 +326,6 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return READING_CARDS
 
 async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Этап 3: Персональный совет + предупреждение + кнопка Назад"""
     query = update.callback_query
     await query.answer()
     
@@ -362,7 +356,6 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
         full_reading
     )
     
-    # ? ДОБАВЛЕНА КНОПКА "НАЗАД"
     keyboard = [
         [InlineKeyboardButton("?? Назад к картам", callback_data='back_to_cards')],
         [InlineKeyboardButton("?? Сохранить расклад", callback_data='save_last_reading')],
@@ -385,29 +378,23 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     return READING_ADVICE
 
-# ? ДОБАВЛЕНЫ ОБРАБОТЧИКИ КНОПОК "НАЗАД"
 async def back_to_spread_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Возврат к выбору расклада"""
     query = update.callback_query
     await query.answer()
     await choose_spread(update, context)
     return READING_INTRO
 
 async def back_to_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Возврат к картам (этап 2)"""
     query = update.callback_query
     await query.answer()
     await reading_step_1(update, context)
     return READING_CARDS
-
-# ... (остальной код без изменений до функции button_handler) ...
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
     
-    # ? ДОБАВЛЕНЫ ОБРАБОТЧИКИ КНОПОК "НАЗАД"
     if query.data == 'back_to_spread_choice':
         await back_to_spread_choice(update, context)
         return
@@ -416,33 +403,69 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_cards(update, context)
         return
     
-    # ... (остальной код без изменений) ...
-    
-    elif query.data == 'confirm_subscribe':
-        # ? ИСПРАВЛЕНА ПРОВЕРКА ПОДПИСКИ: сначала проверяем в базе, потом в канале
-        subscribed_db = check_subscribed(user_id)
+    if query.data == 'daily_card':
+        user_data = get_user_data(user_id)
+        if not user_data or not user_data.get('name'):
+            await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
+            return
         
-        if subscribed_db:
-            message = "? Вы уже получили бонус за подписку!"
+        if can_get_daily_card(user_id):
+            card = get_random_cards(1)[0]
+            card_name, interpretation = card
+            reading = format_daily_card(card_name, interpretation, user_data['name'])
+            save_daily_card(user_id, card_name, reading)
+            
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text=reading
+            )
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text="?? Карта дня получена! Возвращайтесь завтра за новой картой.\n\n?? Хотите сделать подробный расклад? Нажмите «?? Сделать расклад»",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')],
+                    [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
+                ])
+            )
         else:
-            # Проверяем реальную подписку через Telegram API
-            try:
-                chat_member = await context.bot.get_chat_member(
-                    chat_id="@+5q7VJBPU4_QyMDky",  # ID вашего канала
-                    user_id=user_id
-                )
-                if chat_member.status in ["member", "administrator", "creator"]:
-                    mark_subscribed(user_id)
-                    message = "?? Ура! Вы подписались на канал!\n? Бонус +3 бесплатных расклада начислен на ваш счёт!"
-                else:
-                    message = "? Вы не подписаны на канал.\nПожалуйста, подпишитесь и нажмите кнопку снова."
-            except Exception as e:
-                print(f"Ошибка проверки подписки: {e}")
-                message = "? Не удалось проверить подписку. Попробуйте позже."
-        
-        keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(text=message, reply_markup=reply_markup)
+            await query.edit_message_text(
+                text="?? Вы уже получили карту дня сегодня!\nВозвращайтесь завтра за новой картой ??",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
+                ])
+            )
+        return
+    
+    if query.data.startswith('spread_'):
+        await process_spread_selection(update, context)
+        return
+    
+    if query.data == 'do_tarot':
+        await choose_spread(update, context)
+        return
+    
+    user_data = get_user_data(user_id)
+    if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
+        await query.message.reply_text(
+            "? Для начала гадания мне нужны ваши данные:\n"
+            "1. Имя\n"
+            "2. Дата рождения (ДД.ММ.ГГГГ)\n\n"
+            "Напишите своё имя:"
+        )
+        return
+    
+    if query.data == 'save_last_reading':
+        if 'pending_readings' in context.user_data and user_id in context.user_data.get('pending_readings', {}):
+            cards, reading_text = context.user_data['pending_readings'][user_id]
+            slots = get_saved_slots(user_id)
+            free_slots = [i for i in range(1, 4) if i not in slots]
+            
+            if free_slots:
+                slot = save_reading(user_id, cards, reading_text, free_slots[0])
+                message = f"? Расклад сохранён в ячейку #{slot}!"
+                keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await query.edit_message_text(text=message, reply_markup=reply_markup)
                 del context.user_data['pending_readings'][user_id]
             else:
                 message = "?? Все 3 ячейки заняты. Сначала удалите старый расклад:"
@@ -490,6 +513,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton("?? Меню", callback_data='back_to_menu')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+    
     elif query.data.startswith('view_slot_'):
         slot_num = int(query.data.split('_')[2])
         reading = get_saved_reading(user_id, slot_num)
@@ -501,7 +525,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
             await query.edit_message_text(text="? Расклад не найден.")
-   
+    
     elif query.data == 'balance':
         balance = get_balance(user_id)
         message = (
@@ -639,12 +663,25 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'confirm_subscribe':
-        subscribed = check_subscribed(user_id)
-        if subscribed:
+        subscribed_db = check_subscribed(user_id)
+        
+        if subscribed_db:
             message = "? Вы уже получили бонус за подписку!"
         else:
-            mark_subscribed(user_id)
-            message = "?? Ура! Вы подписались на канал!\n? Бонус +3 бесплатных расклада начислен на ваш счёт!"
+            try:
+                chat_member = await context.bot.get_chat_member(
+                    chat_id="@+5q7VJBPU4_QyMDky",
+                    user_id=user_id
+                )
+                if chat_member.status in ["member", "administrator", "creator"]:
+                    mark_subscribed(user_id)
+                    message = "?? Ура! Вы подписались на канал!\n? Бонус +3 бесплатных расклада начислен на ваш счёт!"
+                else:
+                    message = "? Вы не подписаны на канал.\nПожалуйста, подпишитесь и нажмите кнопку снова."
+            except Exception as e:
+                print(f"Ошибка проверки подписки: {e}")
+                message = "? Не удалось проверить подписку. Попробуйте позже."
+        
         keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -744,20 +781,13 @@ start_handler = ConversationHandler(
     allow_reentry=True
 )
 
-# === НОВЫЕ ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК "ДАЛЕЕ" ===
-
 async def reading_step_1_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Глобальный обработчик для кнопки 'Далее' (этап 1 > этап 2)"""
     return await reading_step_1(update, context)
 
 async def reading_step_2_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Глобальный обработчик для кнопки 'Далее' (этап 2 > этап 3)"""
     return await reading_step_2(update, context)
 
-# === КОМАНДА /menu ===
-
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Команда /menu - возвращает в главное меню"""
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
     
