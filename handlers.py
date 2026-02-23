@@ -28,7 +28,7 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     try:
                         await context.bot.send_message(
                             chat_id=referrer_id,
-                            text=f"?? �������! ��� ���� {user.first_name} �������������!\n�� �������� +1 ������� � �������!"
+                            text=f"?? РћС‚Р»РёС‡РЅРѕ! Р’Р°С€ РґСЂСѓРі {user.first_name} РїСЂРёСЃРѕРµРґРёРЅРёР»СЃСЏ!\nР’С‹ РїРѕР»СѓС‡РёР»Рё +1 СЂР°СЃРєР»Р°Рґ Рє Р±Р°Р»Р°РЅСЃСѓ!"
                         )
                     except: pass
         except: pass
@@ -36,22 +36,22 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user_data(user.id)
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
         await update.message.reply_text(
-            "? ����� ���������� � ��� ����!\n\n"
-            "?? ��� �������������������� ������� ��� ����� ������ ��� ������� �����.\n\n"
-            "?? ������� ��������, ��� ��� �����:"
+            "? Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ РјРёСЂ РўР°СЂРѕ!\n\n"
+            "?? Р”Р»СЏ РїРµСЂСЃРѕРЅР°Р»РёР·РёСЂРѕРІР°РЅРЅРѕРіРѕ РіР°РґР°РЅРёСЏ РјРЅРµ РЅСѓР¶РЅРѕ СѓР·РЅР°С‚СЊ РІР°СЃ РЅРµРјРЅРѕРіРѕ Р»СѓС‡С€Рµ.\n\n"
+            "?? РЎРЅР°С‡Р°Р»Р° РЅР°РїРёС€РёС‚Рµ, РєР°Рє РІР°СЃ Р·РѕРІСѓС‚:"
         )
         return ASKING_NAME
     
     balance = get_balance(user.id)
-    message = f"?? ����� ���������� � ��� ����! ??\n? {user_data['name']}, ��� ������: {balance} ���������"
+    message = f"?? Р”РћР‘Р Рћ РџРћР–РђР›РћР’РђРўР¬ Р’ РњРР  РўРђР Рћ! ??\n? {user_data['name']}, РІР°С€ Р±Р°Р»Р°РЅСЃ: {balance} СЂР°СЃРєР»Р°РґРѕРІ"
     
     keyboard = [
-        [InlineKeyboardButton("?? ����� ��� (���������)", callback_data='daily_card')],
-        [InlineKeyboardButton("?? ������� �������", callback_data='do_tarot')],
-        [InlineKeyboardButton(f"?? ������: {balance}", callback_data='balance')],
-        [InlineKeyboardButton("?? �������� (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("??? ��� ��������", callback_data='saved_readings')],
-        [InlineKeyboardButton("? ������", callback_data='help')]
+        [InlineKeyboardButton("?? РљР°СЂС‚Р° РґРЅСЏ (Р±РµСЃРїР»Р°С‚РЅРѕ)", callback_data='daily_card')],
+        [InlineKeyboardButton("?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"?? Р‘Р°Р»Р°РЅСЃ: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("?? РџРѕРґРїРёСЃРєР° (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("??? РњРѕРё СЂР°СЃРєР»Р°РґС‹", callback_data='saved_readings')],
+        [InlineKeyboardButton("? РџРѕРјРѕС‰СЊ", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
@@ -60,18 +60,18 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text.strip()
     if len(name) < 2:
-        await update.message.reply_text("? ��� ������ ���� �� ����� 2 ��������. ���������� ��� ���:")
+        await update.message.reply_text("? РРјСЏ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РЅРµ РјРµРЅРµРµ 2 СЃРёРјРІРѕР»РѕРІ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·:")
         return ASKING_NAME
     
-    if not re.match(r'^[a-zA-Z�-��-߸�\s]+$', name):
-        await update.message.reply_text("? ��� ����� ��������� ������ ����� � �������. ���������� ��� ���:")
+    if not re.match(r'^[a-zA-ZР°-СЏРђ-РЇС‘РЃ\s]+$', name):
+        await update.message.reply_text("? РРјСЏ РјРѕР¶РµС‚ СЃРѕРґРµСЂР¶Р°С‚СЊ С‚РѕР»СЊРєРѕ Р±СѓРєРІС‹ Рё РїСЂРѕР±РµР»С‹. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·:")
         return ASKING_NAME
     
     context.user_data['temp_name'] = name
     await update.message.reply_text(
-        f"? ������� �������������, {name}!\n\n"
-        "?? ������ �������� ���� ���� �������� � �������:\n"
-        "?? ��.��.���� (��������: 15.08.1990)"
+        f"? РџСЂРёСЏС‚РЅРѕ РїРѕР·РЅР°РєРѕРјРёС‚СЊСЃСЏ, {name}!\n\n"
+        "?? РўРµРїРµСЂСЊ РЅР°РїРёС€РёС‚Рµ РІР°С€Сѓ РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ РІ С„РѕСЂРјР°С‚Рµ:\n"
+        "?? Р”Р”.РњРњ.Р“Р“Р“Р“ (РЅР°РїСЂРёРјРµСЂ: 15.08.1990)"
     )
     return ASKING_BIRTHDATE
 
@@ -80,9 +80,9 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not re.match(r'^\d{2}\.\d{2}\.\d{4}$', birthdate):
         await update.message.reply_text(
-            "? �������� ������ ����.\n"
-            "?? ����������, �������� � ������� ��.��.����\n"
-            "������: 15.08.1990"
+            "? РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РґР°С‚С‹.\n"
+            "?? РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РЅР°РїРёС€РёС‚Рµ РІ С„РѕСЂРјР°С‚Рµ Р”Р”.РњРњ.Р“Р“Р“Р“\n"
+            "РџСЂРёРјРµСЂ: 15.08.1990"
         )
         return ASKING_BIRTHDATE
     
@@ -93,20 +93,20 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if birth_date > today or year < 1900:
             await update.message.reply_text(
-                "? ��������� ����: ��� ������ ���� ����� 1900, � ���� � �� � �������.\n"
-                "?? ������ ���������� ����: 15.08.1990"
+                "? РџСЂРѕРІРµСЂСЊС‚Рµ РґР°С‚Сѓ: РіРѕРґ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїРѕСЃР»Рµ 1900, Р° РґР°С‚Р° вЂ” РЅРµ РІ Р±СѓРґСѓС‰РµРј.\n"
+                "?? РџСЂРёРјРµСЂ РїСЂР°РІРёР»СЊРЅРѕР№ РґР°С‚С‹: 15.08.1990"
             )
             return ASKING_BIRTHDATE
             
     except ValueError:
         await update.message.reply_text(
-            "? �������� ����. ���������, ��� ���� ����������.\n"
-            "?? ������: 15.08.1990 (� �� 31.02.1990)"
+            "? РќРµРІРµСЂРЅР°СЏ РґР°С‚Р°. РЈР±РµРґРёС‚РµСЃСЊ, С‡С‚Рѕ РґР°С‚Р° СЃСѓС‰РµСЃС‚РІСѓРµС‚.\n"
+            "?? РџСЂРёРјРµСЂ: 15.08.1990 (Р° РЅРµ 31.02.1990)"
         )
         return ASKING_BIRTHDATE
     
     user_id = update.effective_user.id
-    name = context.user_data.get('temp_name', '������')
+    name = context.user_data.get('temp_name', 'РђРЅРѕРЅРёРј')
     save_user_data(user_id, name, birthdate)
     
     if 'temp_name' in context.user_data:
@@ -114,21 +114,21 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     balance = get_balance(user_id)
     await update.message.reply_text(
-        f"? �������, {name}! ������ ���������.\n\n"
-        f"? ��� ������: {balance} ���������\n"
-        f"?? ������ � ������� �������?"
+        f"? РћС‚Р»РёС‡РЅРѕ, {name}! Р”Р°РЅРЅС‹Рµ СЃРѕС…СЂР°РЅРµРЅС‹.\n\n"
+        f"? Р’Р°С€ Р±Р°Р»Р°РЅСЃ: {balance} СЂР°СЃРєР»Р°РґРѕРІ\n"
+        f"?? Р“РѕС‚РѕРІС‹ Рє РїРµСЂРІРѕРјСѓ РіР°РґР°РЅРёСЋ?"
     )
     
     keyboard = [
-        [InlineKeyboardButton("?? ����� ��� (���������)", callback_data='daily_card')],
-        [InlineKeyboardButton("?? ������� �������", callback_data='do_tarot')],
-        [InlineKeyboardButton(f"?? ������: {balance}", callback_data='balance')],
-        [InlineKeyboardButton("?? �������� (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("??? ��� ��������", callback_data='saved_readings')],
-        [InlineKeyboardButton("? ������", callback_data='help')]
+        [InlineKeyboardButton("?? РљР°СЂС‚Р° РґРЅСЏ (Р±РµСЃРїР»Р°С‚РЅРѕ)", callback_data='daily_card')],
+        [InlineKeyboardButton("?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"?? Р‘Р°Р»Р°РЅСЃ: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("?? РџРѕРґРїРёСЃРєР° (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("??? РњРѕРё СЂР°СЃРєР»Р°РґС‹", callback_data='saved_readings')],
+        [InlineKeyboardButton("? РџРѕРјРѕС‰СЊ", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("?? �������� ��������:", reply_markup=reply_markup)
+    await update.message.reply_text("?? Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:", reply_markup=reply_markup)
     return ConversationHandler.END
 
 async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -137,15 +137,15 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     occupied = len(slots)
     free = 3 - occupied
     
-    message = f"??? ��� �����ͨ���� �������� ???\n\n?? �������� ����� ��� ����������: {occupied}/3\n"
+    message = f"??? РњРћР РЎРћРҐР РђРќРЃРќРќР«Р• Р РђРЎРљР›РђР”Р« ???\n\n?? Р”РѕСЃС‚СѓРїРЅРѕ СЏС‡РµРµРє РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ: {occupied}/3\n"
     if free > 0:
-        message += f"? �������� �����: {free}\n\n"
+        message += f"? РЎРІРѕР±РѕРґРЅРѕ СЏС‡РµРµРє: {free}\n\n"
     else:
-        message += "?? ��� ������ ������.\n\n"
+        message += "?? Р’СЃРµ СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹.\n\n"
     
     if not slots:
-        message += "� ��� ���� ��� ����������� ���������.\n�������� ������� � ������� �?? ����������!"
-        keyboard = [[InlineKeyboardButton("?? ������� �������", callback_data='do_tarot')]]
+        message += "РЈ РІР°СЃ РїРѕРєР° РЅРµС‚ СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… СЂР°СЃРєР»Р°РґРѕРІ.\nРЎРґРµР»Р°Р№С‚Рµ СЂР°СЃРєР»Р°Рґ Рё РЅР°Р¶РјРёС‚Рµ В«?? РЎРѕС…СЂР°РЅРёС‚СЊВ»!"
+        keyboard = [[InlineKeyboardButton("?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(text=message, reply_markup=reply_markup)
         return
@@ -153,22 +153,22 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
     for slot_num in sorted(slots.keys()):
         timestamp = slots[slot_num]
-        keyboard.append([InlineKeyboardButton(f"?? ������ #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
+        keyboard.append([InlineKeyboardButton(f"?? РЇС‡РµР№РєР° #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
 async def terms_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
-        "?? ������� ������ � �������� ??\n"
-        "\n?? �����: ����� ������ � ���� ���� �������� ������������ �������.\n"
-        "�������� ���� ��������������� � ��������������� �����.\n"
-        "������������� ���� �� �������� ������������� �������� � �� �������� ������������ �����������.\n"
-        "\n? ������� ����������, �� ������������ � ���, ���:\n"
-        "� ������ ������������ � ��������������.\n"
-        "� �������� ����� ��������������� ��������.\n"
-        "� �� ���������� ����� �� ����������� ���� ��� �����������.\n"
-        "� ������� ������� �� ������������ (������������ �����).\n"
-        "\n? ������� �� ��������� �������! ??"
+        "?? РЈРЎР›РћР’РРЇ РћРџР›РђРўР« Р РЎРћР“Р›РђРЎРР• ??\n"
+        "\n?? Р’РђР–РќРћ: Р»СЋР±Р°СЏ РѕРїР»Р°С‚Р° РІ СЌС‚РѕРј Р±РѕС‚Рµ СЏРІР»СЏРµС‚СЃСЏ Р”РћР‘Р РћР’РћР›Р¬РќР«Рњ Р”РћРќРђРўРћРњ.\n"
+        "Р Р°СЃРєР»Р°РґС‹ РўР°СЂРѕ РїСЂРµРґРѕСЃС‚Р°РІР»СЏСЋС‚СЃСЏ РІ СЂР°Р·РІР»РµРєР°С‚РµР»СЊРЅС‹С… С†РµР»СЏС….\n"
+        "РРЅС‚РµСЂРїСЂРµС‚Р°С†РёРё РєР°СЂС‚ РЅРµ СЏРІР»СЏСЋС‚СЃСЏ РїСЂРµРґСЃРєР°Р·Р°РЅРёРµРј Р±СѓРґСѓС‰РµРіРѕ Рё РЅРµ Р·Р°РјРµРЅСЏСЋС‚ РєРѕРЅСЃСѓР»СЊС‚Р°С†РёСЋ СЃРїРµС†РёР°Р»РёСЃС‚Р°.\n"
+        "\n? РќР°Р¶РёРјР°СЏ В«РћРїР»Р°С‚РёС‚СЊВ», РІС‹ СЃРѕРіР»Р°С€Р°РµС‚РµСЃСЊ СЃ С‚РµРј, С‡С‚Рѕ:\n"
+        "вЂў РћРїР»Р°С‚Р° РґРѕР±СЂРѕРІРѕР»СЊРЅР°СЏ Рё РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅР°СЏ.\n"
+        "вЂў Р Р°СЃРєР»Р°РґС‹ РЅРѕСЃСЏС‚ СЂР°Р·РІР»РµРєР°С‚РµР»СЊРЅС‹Р№ С…Р°СЂР°РєС‚РµСЂ.\n"
+        "вЂў Р’С‹ СЃРѕРІРµСЂС€Р°РµС‚Рµ РїР»Р°С‚С‘Р¶ РїРѕ СЃРѕР±СЃС‚РІРµРЅРЅРѕР№ РІРѕР»Рµ Р±РµР· РїСЂРёРЅСѓР¶РґРµРЅРёСЏ.\n"
+        "вЂў Р’РѕР·РІСЂР°С‚ СЃСЂРµРґСЃС‚РІ РЅРµ РїСЂРµРґСѓСЃРјРѕС‚СЂРµРЅ (РґРѕР±СЂРѕРІРѕР»СЊРЅС‹Р№ РґРѕРЅР°С‚).\n"
+        "\n? РЎРїР°СЃРёР±Рѕ Р·Р° РїРѕРґРґРµСЂР¶РєСѓ РїСЂРѕРµРєС‚Р°! ??"
     )
     await update.message.reply_text(text=message)
 
@@ -177,7 +177,7 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user_data(user_id)
     
     if not user_data or not user_data.get('name'):
-        await update.message.reply_text("������� ������� ��� � ���� �������� ����� /start")
+        await update.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
         return
     
     if can_get_daily_card(user_id):
@@ -188,17 +188,17 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.message.reply_text(text=reading)
         await update.message.reply_text(
-            text="?? ����� ��� ��������! ������������� ������ �� ����� ������.",
+            text="?? РљР°СЂС‚Р° РґРЅСЏ РїРѕР»СѓС‡РµРЅР°! Р’РѕР·РІСЂР°С‰Р°Р№С‚РµСЃСЊ Р·Р°РІС‚СЂР° Р·Р° РЅРѕРІРѕР№ РєР°СЂС‚РѕР№.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("?? ������� �������", callback_data='do_tarot')],
-                [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+                [InlineKeyboardButton("?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
+                [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
             ])
         )
     else:
         await update.message.reply_text(
-            text="?? �� ��� �������� ����� ��� �������!\n������������� ������ �� ����� ������ ??",
+            text="?? Р’С‹ СѓР¶Рµ РїРѕР»СѓС‡РёР»Рё РєР°СЂС‚Сѓ РґРЅСЏ СЃРµРіРѕРґРЅСЏ!\nР’РѕР·РІСЂР°С‰Р°Р№С‚РµСЃСЊ Р·Р°РІС‚СЂР° Р·Р° РЅРѕРІРѕР№ РєР°СЂС‚РѕР№ ??",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+                [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
             ])
         )
 
@@ -207,50 +207,50 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user_data(user_id)
     
     if not user_data or not user_data.get('name'):
-        await update.message.reply_text("������� ������� ��� � ���� �������� ����� /start")
+        await update.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
         return
     
     balance = get_balance(user_id)
     message = (
-        f"?? ��� ������� ������ ??\n"
-        f"\n?? �������� ���������: {balance}\n"
-        f"\n? ��� �������� ������ ���������:\n"
-        f"� ���������� ����� � +1 ������� ??\n"
-        f"� ����������� �� ����� � +3 �������� ??\n"
-        f"� ������ ����� ��������� �� ������� ??"
+        f"?? Р’РђРЁ РўР•РљРЈР©РР™ Р‘РђР›РђРќРЎ ??\n"
+        f"\n?? Р”РѕСЃС‚СѓРїРЅРѕ СЂР°СЃРєР»Р°РґРѕРІ: {balance}\n"
+        f"\n? РљР°Рє РїРѕР»СѓС‡РёС‚СЊ Р±РѕР»СЊС€Рµ СЂР°СЃРєР»Р°РґРѕРІ:\n"
+        f"вЂў РџСЂРёРіР»Р°СЃРёС‚Рµ РґСЂСѓРіР° вЂ” +1 СЂР°СЃРєР»Р°Рґ ??\n"
+        f"вЂў РџРѕРґРїРёС€РёС‚РµСЃСЊ РЅР° РєР°РЅР°Р» вЂ” +3 СЂР°СЃРєР»Р°РґР° ??\n"
+        f"вЂў РљСѓРїРёС‚Рµ РїР°РєРµС‚ СЂР°СЃРєР»Р°РґРѕРІ СЃРѕ СЃРєРёРґРєРѕР№ ??"
     )
     keyboard = [
-        [InlineKeyboardButton("?? ������ ��������", callback_data='buy_packs')],
-        [InlineKeyboardButton("?? ���������� �����", callback_data='referral')],
-        [InlineKeyboardButton("?? ����������� (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+        [InlineKeyboardButton("?? РљСѓРїРёС‚СЊ СЂР°СЃРєР»Р°РґС‹", callback_data='buy_packs')],
+        [InlineKeyboardButton("?? РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓРіР°", callback_data='referral')],
+        [InlineKeyboardButton("?? РџРѕРґРїРёСЃР°С‚СЊСЃСЏ (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
-        "? ������ ?\n"
-        "\n? ��� ������������ �����:\n"
-        "� ?? ����� ��� � ���������� ������� �� ������� (1 ��� � ����)\n"
-        "� ?? ������� ������� � ��������� ������� �� 3+ ���� (����������� � �������)\n"
-        "� ?? ��������� ������� � ��������� ��������� � ���� �� 3 �����\n"
-        "\n??? ���������� ���������:\n"
-        "� � ��� ���� 3 ������ ��� ���������� ���������.\n"
-        "� �������� �� ����������� ������������� � ������ �� ������ ������.\n"
-        "� ���� ��� ������ ������ � ������� ������� ������ �������.\n"
-        "\n?? ������:\n"
-        "� ��� �����������: 1 ���������� �������.\n"
-        "� ?? ����� ��� � ������ ���������, 1 ��� � ����.\n"
-        "� �� �����: +1 �������.\n"
-        "� �� ��������: +3 ��������.\n"
-        "� ������� ������� �� ������� �� 15%.\n"
-        "\n?? ������:\n"
-        "� ���������� ����� � ������ �������� ��������� ?\n"
-        "� ������������ � � ���������� ??\n"
-        "� ��������� �� ��������: /terms"
+        "? РџРћРњРћР©Р¬ ?\n"
+        "\n? РљРђРљ РџРћР›Р¬Р—РћР’РђРўР¬РЎРЇ Р‘РћРўРћРњ:\n"
+        "вЂў ?? РљР°СЂС‚Р° РґРЅСЏ вЂ” Р±РµСЃРїР»Р°С‚РЅРѕРµ РіР°РґР°РЅРёРµ РЅР° СЃРµРіРѕРґРЅСЏ (1 СЂР°Р· РІ РґРµРЅСЊ)\n"
+        "вЂў ?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ вЂ” РїРѕРґСЂРѕР±РЅС‹Р№ СЂР°СЃРєР»Р°Рґ РёР· 3+ РєР°СЂС‚ (СЃРїРёСЃС‹РІР°РµС‚СЃСЏ СЃ Р±Р°Р»Р°РЅСЃР°)\n"
+        "вЂў ?? РЎРѕС…СЂР°РЅРёС‚СЊ СЂР°СЃРєР»Р°Рґ вЂ” СЃРѕС…СЂР°РЅРёС‚Рµ СЂРµР·СѓР»СЊС‚Р°С‚ РІ РѕРґРЅСѓ РёР· 3 СЏС‡РµРµРє\n"
+        "\n??? РЎРћРҐР РђРќР•РќРР• Р РђРЎРљР›РђР”РћР’:\n"
+        "вЂў РЈ РІР°СЃ РµСЃС‚СЊ 3 СЏС‡РµР№РєРё РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЂР°СЃРєР»Р°РґРѕРІ.\n"
+        "вЂў Р Р°СЃРєР»Р°РґС‹ РќР• СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё вЂ” С‚РѕР»СЊРєРѕ РїРѕ РІР°С€РµРјСѓ РІС‹Р±РѕСЂСѓ.\n"
+        "вЂў Р•СЃР»Рё РІСЃРµ СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹ вЂ” СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ СЃС‚Р°СЂС‹Р№ СЂР°СЃРєР»Р°Рґ.\n"
+        "\n?? Р‘РђР›РђРќРЎ:\n"
+        "вЂў РџСЂРё СЂРµРіРёСЃС‚СЂР°С†РёРё: 1 Р±РµСЃРїР»Р°С‚РЅС‹Р№ СЂР°СЃРєР»Р°Рґ.\n"
+        "вЂў ?? РљР°СЂС‚Р° РґРЅСЏ вЂ” РІСЃРµРіРґР° Р±РµСЃРїР»Р°С‚РЅРѕ, 1 СЂР°Р· РІ РґРµРЅСЊ.\n"
+        "вЂў Р—Р° РґСЂСѓРіР°: +1 СЂР°СЃРєР»Р°Рґ.\n"
+        "вЂў Р—Р° РїРѕРґРїРёСЃРєСѓ: +3 СЂР°СЃРєР»Р°РґР°.\n"
+        "вЂў РџРѕРєСѓРїРєР° РїР°РєРµС‚РѕРІ СЃРѕ СЃРєРёРґРєРѕР№ РґРѕ 15%.\n"
+        "\n?? РћРџР›РђРўРђ:\n"
+        "вЂў Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р° вЂ” СЂСѓС‡РЅР°СЏ РїСЂРѕРІРµСЂРєР° СЃРєСЂРёРЅС€РѕС‚Р° ?\n"
+        "вЂў РљСЂРёРїС‚РѕРІР°Р»СЋС‚Р° вЂ” РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ ??\n"
+        "вЂў РџРѕРґСЂРѕР±РЅРµРµ РѕР± СѓСЃР»РѕРІРёСЏС…: /terms"
     )
-    keyboard = [[InlineKeyboardButton("?? ����", callback_data='back_to_menu')]]
+    keyboard = [[InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
@@ -263,23 +263,23 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name'):
-        await query.message.reply_text("������� ������� ��� � ���� �������� ����� /start")
+        await query.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
         return
     
     balance = get_balance(user_id)
     if balance <= 0:
-        await query.edit_message_text(text="? � ��� ������������ ���������. ��������� ������!")
+        await query.edit_message_text(text="? РЈ РІР°СЃ РЅРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂР°СЃРєР»Р°РґРѕРІ. РџРѕРїРѕР»РЅРёС‚Рµ Р±Р°Р»Р°РЅСЃ!")
         return
     
     if not decrease_balance(user_id, 1):
-        await query.edit_message_text(text="? ������ ��� �������� ��������. ���������� �����.")
+        await query.edit_message_text(text="? РћС€РёР±РєР° РїСЂРё СЃРїРёСЃР°РЅРёРё СЂР°СЃРєР»Р°РґР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.")
         return
     
     new_balance = get_balance(user_id)
     spreads = get_spread_options()
     
     if spread_id not in spreads:
-        await query.edit_message_text(text=f"? �������� ��� ��������: '{spread_id}'")
+        await query.edit_message_text(text=f"? РќРµРІРµСЂРЅС‹Р№ С‚РёРї СЂР°СЃРєР»Р°РґР°: '{spread_id}'")
         return
     
     spread_info = spreads[spread_id]
@@ -294,7 +294,7 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     }
     
     intro_text = format_reading_intro(spread_id, user_data['name'])
-    keyboard = [[InlineKeyboardButton("?? �����", callback_data='reading_step_1')]]
+    keyboard = [[InlineKeyboardButton("?? Р”Р°Р»РµРµ", callback_data='reading_step_1')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.edit_message_text(text=intro_text, reply_markup=reply_markup)
@@ -306,7 +306,7 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     reading_data = context.user_data.get('current_reading', {})
     if not reading_data:
-        await query.edit_message_text(text="? ������: ������ �������� �������. ������� ������.")
+        await query.edit_message_text(text="? РћС€РёР±РєР°: РґР°РЅРЅС‹Рµ СЂР°СЃРєР»Р°РґР° СѓС‚РµСЂСЏРЅС‹. РќР°С‡РЅРёС‚Рµ Р·Р°РЅРѕРІРѕ.")
         return
     
     cards_text = format_reading_cards(
@@ -317,8 +317,8 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     keyboard = [
-        [InlineKeyboardButton("?? �����", callback_data='back_to_spread_choice')],
-        [InlineKeyboardButton("?? �����", callback_data='reading_step_2')]
+        [InlineKeyboardButton("?? РќР°Р·Р°Рґ", callback_data='back_to_spread_choice')],
+        [InlineKeyboardButton("?? Р”Р°Р»РµРµ", callback_data='reading_step_2')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -331,7 +331,7 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     reading_data = context.user_data.get('current_reading', {})
     if not reading_data:
-        await query.edit_message_text(text="? ������: ������ �������� �������. ������� ������.")
+        await query.edit_message_text(text="? РћС€РёР±РєР°: РґР°РЅРЅС‹Рµ СЂР°СЃРєР»Р°РґР° СѓС‚РµСЂСЏРЅС‹. РќР°С‡РЅРёС‚Рµ Р·Р°РЅРѕРІРѕ.")
         return
     
     advice_text = format_reading_advice(
@@ -357,11 +357,11 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     keyboard = [
-        [InlineKeyboardButton("?? ����� � ������", callback_data='back_to_cards')],
-        [InlineKeyboardButton("?? ��������� �������", callback_data='save_last_reading')],
-        [InlineKeyboardButton("?? ��� ���� �������", callback_data='do_tarot')],
-        [InlineKeyboardButton(f"?? ������: {reading_data['balance_after']}", callback_data='balance')],
-        [InlineKeyboardButton("?? ������� ����", callback_data='back_to_menu')]
+        [InlineKeyboardButton("?? РќР°Р·Р°Рґ Рє РєР°СЂС‚Р°Рј", callback_data='back_to_cards')],
+        [InlineKeyboardButton("?? РЎРѕС…СЂР°РЅРёС‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='save_last_reading')],
+        [InlineKeyboardButton("?? Р•С‰С‘ РѕРґРёРЅ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"?? Р‘Р°Р»Р°РЅСЃ: {reading_data['balance_after']}", callback_data='balance')],
+        [InlineKeyboardButton("?? Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -406,7 +406,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == 'daily_card':
         user_data = get_user_data(user_id)
         if not user_data or not user_data.get('name'):
-            await query.message.reply_text("������� ������� ��� � ���� �������� ����� /start")
+            await query.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
             return
         
         if can_get_daily_card(user_id):
@@ -421,17 +421,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             await context.bot.send_message(
                 chat_id=query.message.chat_id,
-                text="?? ����� ��� ��������! ������������� ������ �� ����� ������.\n\n?? ������ ������� ��������� �������? ������� �?? ������� �������",
+                text="?? РљР°СЂС‚Р° РґРЅСЏ РїРѕР»СѓС‡РµРЅР°! Р’РѕР·РІСЂР°С‰Р°Р№С‚РµСЃСЊ Р·Р°РІС‚СЂР° Р·Р° РЅРѕРІРѕР№ РєР°СЂС‚РѕР№.\n\n?? РҐРѕС‚РёС‚Рµ СЃРґРµР»Р°С‚СЊ РїРѕРґСЂРѕР±РЅС‹Р№ СЂР°СЃРєР»Р°Рґ? РќР°Р¶РјРёС‚Рµ В«?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°РґВ»",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("?? ������� �������", callback_data='do_tarot')],
-                    [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+                    [InlineKeyboardButton("?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
+                    [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
                 ])
             )
         else:
             await query.edit_message_text(
-                text="?? �� ��� �������� ����� ��� �������!\n������������� ������ �� ����� ������ ??",
+                text="?? Р’С‹ СѓР¶Рµ РїРѕР»СѓС‡РёР»Рё РєР°СЂС‚Сѓ РґРЅСЏ СЃРµРіРѕРґРЅСЏ!\nР’РѕР·РІСЂР°С‰Р°Р№С‚РµСЃСЊ Р·Р°РІС‚СЂР° Р·Р° РЅРѕРІРѕР№ РєР°СЂС‚РѕР№ ??",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+                    [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
                 ])
             )
         return
@@ -447,10 +447,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
         await query.message.reply_text(
-            "? ��� ������ ������� ��� ����� ���� ������:\n"
-            "1. ���\n"
-            "2. ���� �������� (��.��.����)\n\n"
-            "�������� ��� ���:"
+            "? Р”Р»СЏ РЅР°С‡Р°Р»Р° РіР°РґР°РЅРёСЏ РјРЅРµ РЅСѓР¶РЅС‹ РІР°С€Рё РґР°РЅРЅС‹Рµ:\n"
+            "1. РРјСЏ\n"
+            "2. Р”Р°С‚Р° СЂРѕР¶РґРµРЅРёСЏ (Р”Р”.РњРњ.Р“Р“Р“Р“)\n\n"
+            "РќР°РїРёС€РёС‚Рµ СЃРІРѕС‘ РёРјСЏ:"
         )
         return
     
@@ -462,29 +462,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             if free_slots:
                 slot = save_reading(user_id, cards, reading_text, free_slots[0])
-                message = f"? ������� �������� � ������ #{slot}!"
-                keyboard = [[InlineKeyboardButton("?? ����", callback_data='back_to_menu')]]
+                message = f"? Р Р°СЃРєР»Р°Рґ СЃРѕС…СЂР°РЅС‘РЅ РІ СЏС‡РµР№РєСѓ #{slot}!"
+                keyboard = [[InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]]
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(text=message, reply_markup=reply_markup)
                 del context.user_data['pending_readings'][user_id]
             else:
-                message = "?? ��� 3 ������ ������. ������� ������� ������ �������:"
+                message = "?? Р’СЃРµ 3 СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹. РЎРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ СЃС‚Р°СЂС‹Р№ СЂР°СЃРєР»Р°Рґ:"
                 keyboard = []
                 for slot_num, timestamp in slots.items():
-                    keyboard.append([InlineKeyboardButton(f"? ������ #{slot_num} ({timestamp})", callback_data=f'delete_slot_{slot_num}')])
-                keyboard.append([InlineKeyboardButton("?? ����", callback_data='back_to_menu')])
+                    keyboard.append([InlineKeyboardButton(f"? РЇС‡РµР№РєР° #{slot_num} ({timestamp})", callback_data=f'delete_slot_{slot_num}')])
+                keyboard.append([InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')])
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
-            await query.edit_message_text(text="? ��� �������� ��� ����������. ������� �������� �������!")
+            await query.edit_message_text(text="? РќРµС‚ СЂР°СЃРєР»Р°РґР° РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ. РЎРЅР°С‡Р°Р»Р° СЃРґРµР»Р°Р№С‚Рµ СЂР°СЃРєР»Р°Рґ!")
     
     elif query.data.startswith('delete_slot_'):
         slot_num = int(query.data.split('_')[2])
         if delete_saved_reading(user_id, slot_num):
-            message = f"? ������� �� ������ #{slot_num} �����."
+            message = f"? Р Р°СЃРєР»Р°Рґ РёР· СЏС‡РµР№РєРё #{slot_num} СѓРґР°Р»С‘РЅ."
         else:
-            message = "? ������ ��������."
-        keyboard = [[InlineKeyboardButton("?? ����", callback_data='back_to_menu')]]
+            message = "? РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ."
+        keyboard = [[InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
@@ -493,15 +493,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         occupied = len(slots)
         free = 3 - occupied
         
-        message = f"??? ��� �����ͨ���� �������� ???\n?? �������� ����� ��� ����������: {occupied}/3\n"
+        message = f"??? РњРћР РЎРћРҐР РђРќРЃРќРќР«Р• Р РђРЎРљР›РђР”Р« ???\n?? Р”РѕСЃС‚СѓРїРЅРѕ СЏС‡РµРµРє РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ: {occupied}/3\n"
         if free > 0:
-            message += f"? �������� �����: {free}\n\n"
+            message += f"? РЎРІРѕР±РѕРґРЅРѕ СЏС‡РµРµРє: {free}\n\n"
         else:
-            message += "?? ��� ������ ������. ����� ��������� ����� �������, ������� ������� ������.\n\n"
+            message += "?? Р’СЃРµ СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹. Р§С‚РѕР±С‹ СЃРѕС…СЂР°РЅРёС‚СЊ РЅРѕРІС‹Р№ СЂР°СЃРєР»Р°Рґ, СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ СЃС‚Р°СЂС‹Р№.\n\n"
         
         if not slots:
-            message += "� ��� ���� ��� ����������� ���������.\n�������� ������� � ������� �?? ����������!"
-            keyboard = [[InlineKeyboardButton("?? ������� �������", callback_data='do_tarot')], [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]]
+            message += "РЈ РІР°СЃ РїРѕРєР° РЅРµС‚ СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… СЂР°СЃРєР»Р°РґРѕРІ.\nРЎРґРµР»Р°Р№С‚Рµ СЂР°СЃРєР»Р°Рґ Рё РЅР°Р¶РјРёС‚Рµ В«?? РЎРѕС…СЂР°РЅРёС‚СЊВ»!"
+            keyboard = [[InlineKeyboardButton("?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')], [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(text=message, reply_markup=reply_markup)
             return
@@ -509,8 +509,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = []
         for slot_num in sorted(slots.keys()):
             timestamp = slots[slot_num]
-            keyboard.append([InlineKeyboardButton(f"?? ������ #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
-        keyboard.append([InlineKeyboardButton("?? ����", callback_data='back_to_menu')])
+            keyboard.append([InlineKeyboardButton(f"?? РЇС‡РµР№РєР° #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
+        keyboard.append([InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
@@ -519,28 +519,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reading = get_saved_reading(user_id, slot_num)
         if reading:
             cards_str, interpretation, timestamp = reading
-            message = f"?? ������� �� ������ #{slot_num}\n?? {timestamp[:16]}\n\n{interpretation}"
-            keyboard = [[InlineKeyboardButton("? ������� ���� �������", callback_data=f'delete_slot_{slot_num}')], [InlineKeyboardButton("?? ����� � ������", callback_data='saved_readings')]]
+            message = f"?? Р РђРЎРљР›РђР” РР— РЇР§Р•Р™РљР #{slot_num}\n?? {timestamp[:16]}\n\n{interpretation}"
+            keyboard = [[InlineKeyboardButton("? РЈРґР°Р»РёС‚СЊ СЌС‚РѕС‚ СЂР°СЃРєР»Р°Рґ", callback_data=f'delete_slot_{slot_num}')], [InlineKeyboardButton("?? РќР°Р·Р°Рґ Рє СЃРїРёСЃРєСѓ", callback_data='saved_readings')]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
-            await query.edit_message_text(text="? ������� �� ������.")
+            await query.edit_message_text(text="? Р Р°СЃРєР»Р°Рґ РЅРµ РЅР°Р№РґРµРЅ.")
     
     elif query.data == 'balance':
         balance = get_balance(user_id)
         message = (
-            f"?? ��� ������� ������ ??\n"
-            f"\n?? �������� ���������: {balance}\n"
-            f"\n? ��� �������� ������ ���������:\n"
-            f"� ���������� ����� � +1 ������� ??\n"
-            f"� ����������� �� ����� � +3 �������� ??\n"
-            f"� ������ ����� ��������� �� ������� ??"
+            f"?? Р’РђРЁ РўР•РљРЈР©РР™ Р‘РђР›РђРќРЎ ??\n"
+            f"\n?? Р”РѕСЃС‚СѓРїРЅРѕ СЂР°СЃРєР»Р°РґРѕРІ: {balance}\n"
+            f"\n? РљР°Рє РїРѕР»СѓС‡РёС‚СЊ Р±РѕР»СЊС€Рµ СЂР°СЃРєР»Р°РґРѕРІ:\n"
+            f"вЂў РџСЂРёРіР»Р°СЃРёС‚Рµ РґСЂСѓРіР° вЂ” +1 СЂР°СЃРєР»Р°Рґ ??\n"
+            f"вЂў РџРѕРґРїРёС€РёС‚РµСЃСЊ РЅР° РєР°РЅР°Р» вЂ” +3 СЂР°СЃРєР»Р°РґР° ??\n"
+            f"вЂў РљСѓРїРёС‚Рµ РїР°РєРµС‚ СЂР°СЃРєР»Р°РґРѕРІ СЃРѕ СЃРєРёРґРєРѕР№ ??"
         )
         keyboard = [
-            [InlineKeyboardButton("?? ������ ��������", callback_data='buy_packs')],
-            [InlineKeyboardButton("?? ���������� �����", callback_data='referral')],
-            [InlineKeyboardButton("?? ����������� (+3)", callback_data='subscribe')],
-            [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? РљСѓРїРёС‚СЊ СЂР°СЃРєР»Р°РґС‹", callback_data='buy_packs')],
+            [InlineKeyboardButton("?? РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓРіР°", callback_data='referral')],
+            [InlineKeyboardButton("?? РџРѕРґРїРёСЃР°С‚СЊСЃСЏ (+3)", callback_data='subscribe')],
+            [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -549,50 +549,50 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ref_link = f"https://t.me/cardnotlie_bot?start={user_id}"
         referral_count = get_referral_count(user_id)
         message = (
-            f"?? ����������� ��������� ??\n\n"
-            f"? ���� ����������� ������:\n"
+            f"?? Р Р•Р¤Р•Р РђР›Р¬РќРђРЇ РџР РћР“Р РђРњРњРђ ??\n\n"
+            f"? Р’Р°С€Р° СЂРµС„РµСЂР°Р»СЊРЅР°СЏ СЃСЃС‹Р»РєР°:\n"
             f"{ref_link}\n\n"
-            f"?? ���������� ������: {referral_count}\n"
-            f"?? �� ������� ����� � +1 ���������� �������!\n\n"
-            f"?? ������ ��������� ������ ������� ��� � �������!"
+            f"?? РџСЂРёРіР»Р°С€РµРЅРѕ РґСЂСѓР·РµР№: {referral_count}\n"
+            f"?? Р—Р° РєР°Р¶РґРѕРіРѕ РґСЂСѓРіР° вЂ” +1 Р±РµСЃРїР»Р°С‚РЅС‹Р№ СЂР°СЃРєР»Р°Рґ!\n\n"
+            f"?? РџСЂРѕСЃС‚Рѕ РѕС‚РїСЂР°РІСЊС‚Рµ СЃСЃС‹Р»РєСѓ РґСЂСѓР·СЊСЏРј РёР»Рё РІ СЃРѕС†СЃРµС‚Рё!"
         )
-        keyboard = [[InlineKeyboardButton("?? ����", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'buy_packs':
         message = (
-            "?? ������� ������ ??\n"
-            "\n�������� ������� ������:\n"
-            "\n?? ���������� ����� � ��������� ������ �������� ��������� ?\n"
-            "?? ������������ � � ���������� ??"
+            "?? РЎРџРћРЎРћР‘Р« РћРџР›РђРўР« ??\n"
+            "\nР’С‹Р±РµСЂРёС‚Рµ СѓРґРѕР±РЅС‹Р№ СЃРїРѕСЃРѕР±:\n"
+            "\n?? Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р° вЂ” С‚СЂРµР±СѓРµС‚СЃСЏ СЂСѓС‡РЅР°СЏ РїСЂРѕРІРµСЂРєР° СЃРєСЂРёРЅС€РѕС‚Р° ?\n"
+            "?? РљСЂРёРїС‚РѕРІР°Р»СЋС‚Р° вЂ” РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ ??"
         )
         keyboard = [
-            [InlineKeyboardButton("?? ���������� �����", callback_data='card_packs')],
-            [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р°", callback_data='card_packs')],
+            [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'card_packs':
         message = (
-            "?? ������ ��������� ??\n"
-            "\n? �������� ����� �� �������:\n"
-            "\n?? 1 ������� � 100 ?\n"
-            "   �������� ��� �������� �������.\n"
-            "\n?? 3 �������� � 285 ? (-5%)\n"
-            "   �������� 15 ?.\n"
-            "\n?? 7 ��������� � 630 ? (-10%)\n"
-            "   �������� 70 ?.\n"
-            "\n?? 13 ��������� � 1 105 ? (-15%)\n"
-            "   �������� 195 ?."
+            "?? РџРђРљР•РўР« Р РђРЎРљР›РђР”РћР’ ??\n"
+            "\n? Р’С‹Р±РµСЂРёС‚Рµ РїР°РєРµС‚ СЃРѕ СЃРєРёРґРєРѕР№:\n"
+            "\n?? 1 СЂР°СЃРєР»Р°Рґ вЂ” 100 ?\n"
+            "   РРґРµР°Р»СЊРЅРѕ РґР»СЏ СЂР°Р·РѕРІРѕРіРѕ РіР°РґР°РЅРёСЏ.\n"
+            "\n?? 3 СЂР°СЃРєР»Р°РґР° вЂ” 285 ? (-5%)\n"
+            "   Р­РєРѕРЅРѕРјРёСЏ 15 ?.\n"
+            "\n?? 7 СЂР°СЃРєР»Р°РґРѕРІ вЂ” 630 ? (-10%)\n"
+            "   Р­РєРѕРЅРѕРјРёСЏ 70 ?.\n"
+            "\n?? 13 СЂР°СЃРєР»Р°РґРѕРІ вЂ” 1 105 ? (-15%)\n"
+            "   Р­РєРѕРЅРѕРјРёСЏ 195 ?."
         )
         keyboard = [
-            [InlineKeyboardButton("1 ������� � 100?", callback_data='buy_1')],
-            [InlineKeyboardButton("3 �������� � 285? (-5%)", callback_data='buy_3')],
-            [InlineKeyboardButton("7 ��������� � 630? (-10%)", callback_data='buy_7')],
-            [InlineKeyboardButton("13 ��������� � 1 105? (-15%)", callback_data='buy_13')],
-            [InlineKeyboardButton("?? �����", callback_data='buy_packs')]
+            [InlineKeyboardButton("1 СЂР°СЃРєР»Р°Рґ вЂ” 100?", callback_data='buy_1')],
+            [InlineKeyboardButton("3 СЂР°СЃРєР»Р°РґР° вЂ” 285? (-5%)", callback_data='buy_3')],
+            [InlineKeyboardButton("7 СЂР°СЃРєР»Р°РґРѕРІ вЂ” 630? (-10%)", callback_data='buy_7')],
+            [InlineKeyboardButton("13 СЂР°СЃРєР»Р°РґРѕРІ вЂ” 1 105? (-15%)", callback_data='buy_13')],
+            [InlineKeyboardButton("?? РќР°Р·Р°Рґ", callback_data='buy_packs')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -605,59 +605,59 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         discount = discounts[pack_size]
         
         message = (
-            f"?? ������ ������: {pack_size} ��������� ??\n"
-            f"\n?? ���������: {price} ? (������ {discount})\n"
-            f"\n?? ��������� ��� ������:\n"
-            f"?? ����: ��������������.\n"
-            f"?? ����� �����: \n"
-            f"?? ����������: ������ �.\n"
-            f"?? �����: {price} ?.\n"
-            f"\n? ����� ������:\n"
-            f"1. �������� �������� ��������.\n"
-            f"2. �������� � ��������� @jobphone_admin � �������� ��������.\n"
-            f"3. �� �������� {pack_size} ��������� �� ��� ������ � ������� 10 �����! ?\n"
-            f"\n?? ��������� �� �������� ������: /terms"
+            f"?? РћРџР›РђРўРђ РџРђРљР•РўРђ: {pack_size} СЂР°СЃРєР»Р°РґРѕРІ ??\n"
+            f"\n?? РЎС‚РѕРёРјРѕСЃС‚СЊ: {price} ? (СЃРєРёРґРєР° {discount})\n"
+            f"\n?? Р РµРєРІРёР·РёС‚С‹ РґР»СЏ РѕРїР»Р°С‚С‹:\n"
+            f"?? Р‘Р°РЅРє: Р Р°Р№С„С„Р°Р№Р·РµРЅР±Р°РЅРє.\n"
+            f"?? РќРѕРјРµСЂ РєР°СЂС‚С‹: \n"
+            f"?? РџРѕР»СѓС‡Р°С‚РµР»СЊ: РЎРµСЂРіРµР№ Р›.\n"
+            f"?? РЎСѓРјРјР°: {price} ?.\n"
+            f"\n? РџРћРЎР›Р• РћРџР›РђРўР«:\n"
+            f"1. РЎРґРµР»Р°Р№С‚Рµ СЃРєСЂРёРЅС€РѕС‚ РїРµСЂРµРІРѕРґР°.\n"
+            f"2. РќР°РїРёС€РёС‚Рµ РІ РїРѕРґРґРµСЂР¶РєСѓ @jobphone_admin СЃ РїРѕРјРµС‚РєРѕР№ В«РћРџР›РђРўРђВ».\n"
+            f"3. РњС‹ РЅР°С‡РёСЃР»РёРј {pack_size} СЂР°СЃРєР»Р°РґРѕРІ РЅР° РІР°С€ Р±Р°Р»Р°РЅСЃ РІ С‚РµС‡РµРЅРёРµ 10 РјРёРЅСѓС‚! ?\n"
+            f"\n?? РџРѕРґСЂРѕР±РЅРµРµ РѕР± СѓСЃР»РѕРІРёСЏС… РѕРїР»Р°С‚С‹: /terms"
         )
         keyboard = [
-            [InlineKeyboardButton("?? ����� � �������", callback_data='card_packs')],
-            [InlineKeyboardButton("?? ������� ������", callback_data='terms')],
-            [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? РќР°Р·Р°Рґ Рє РїР°РєРµС‚Р°Рј", callback_data='card_packs')],
+            [InlineKeyboardButton("?? РЈСЃР»РѕРІРёСЏ РѕРїР»Р°С‚С‹", callback_data='terms')],
+            [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'terms' or query.data == 'terms_button':
         message = (
-            "?? ������� ������ � �������� ??\n"
-            "\n?? �����: ����� ������ � ���� ���� �������� ������������ �������.\n"
-            "�������� ���� ��������������� � ��������������� �����.\n"
-            "������������� ���� �� �������� ������������� �������� � �� �������� ������������ �����������.\n"
-            "\n? ������� ����������, �� ������������ � ���, ���:\n"
-            "� ������ ������������ � ��������������.\n"
-            "� �������� ����� ��������������� ��������.\n"
-            "� �� ���������� ����� �� ����������� ���� ��� �����������.\n"
-            "� ������� ������� �� ������������ (������������ �����).\n"
-            "\n? ������� �� ��������� �������! ??"
+            "?? РЈРЎР›РћР’РРЇ РћРџР›РђРўР« Р РЎРћР“Р›РђРЎРР• ??\n"
+            "\n?? Р’РђР–РќРћ: Р»СЋР±Р°СЏ РѕРїР»Р°С‚Р° РІ СЌС‚РѕРј Р±РѕС‚Рµ СЏРІР»СЏРµС‚СЃСЏ Р”РћР‘Р РћР’РћР›Р¬РќР«Рњ Р”РћРќРђРўРћРњ.\n"
+            "Р Р°СЃРєР»Р°РґС‹ РўР°СЂРѕ РїСЂРµРґРѕСЃС‚Р°РІР»СЏСЋС‚СЃСЏ РІ СЂР°Р·РІР»РµРєР°С‚РµР»СЊРЅС‹С… С†РµР»СЏС….\n"
+            "РРЅС‚РµСЂРїСЂРµС‚Р°С†РёРё РєР°СЂС‚ РЅРµ СЏРІР»СЏСЋС‚СЃСЏ РїСЂРµРґСЃРєР°Р·Р°РЅРёРµРј Р±СѓРґСѓС‰РµРіРѕ Рё РЅРµ Р·Р°РјРµРЅСЏСЋС‚ РєРѕРЅСЃСѓР»СЊС‚Р°С†РёСЋ СЃРїРµС†РёР°Р»РёСЃС‚Р°.\n"
+            "\n? РќР°Р¶РёРјР°СЏ В«РћРїР»Р°С‚РёС‚СЊВ», РІС‹ СЃРѕРіР»Р°С€Р°РµС‚РµСЃСЊ СЃ С‚РµРј, С‡С‚Рѕ:\n"
+            "вЂў РћРїР»Р°С‚Р° РґРѕР±СЂРѕРІРѕР»СЊРЅР°СЏ Рё РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅР°СЏ.\n"
+            "вЂў Р Р°СЃРєР»Р°РґС‹ РЅРѕСЃСЏС‚ СЂР°Р·РІР»РµРєР°С‚РµР»СЊРЅС‹Р№ С…Р°СЂР°РєС‚РµСЂ.\n"
+            "вЂў Р’С‹ СЃРѕРІРµСЂС€Р°РµС‚Рµ РїР»Р°С‚С‘Р¶ РїРѕ СЃРѕР±СЃС‚РІРµРЅРЅРѕР№ РІРѕР»Рµ Р±РµР· РїСЂРёРЅСѓР¶РґРµРЅРёСЏ.\n"
+            "вЂў Р’РѕР·РІСЂР°С‚ СЃСЂРµРґСЃС‚РІ РЅРµ РїСЂРµРґСѓСЃРјРѕС‚СЂРµРЅ (РґРѕР±СЂРѕРІРѕР»СЊРЅС‹Р№ РґРѕРЅР°С‚).\n"
+            "\n? РЎРїР°СЃРёР±Рѕ Р·Р° РїРѕРґРґРµСЂР¶РєСѓ РїСЂРѕРµРєС‚Р°! ??"
         )
-        keyboard = [[InlineKeyboardButton("?? ����� � ������", callback_data='buy_packs')]]
+        keyboard = [[InlineKeyboardButton("?? РќР°Р·Р°Рґ Рє РѕРїР»Р°С‚Рµ", callback_data='buy_packs')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'subscribe':
         subscribed = check_subscribed(user_id)
         if subscribed:
-            message = "? �� ��� ��������� �� ��� �����!\n?? ����� +3 �������� ��� ��������."
+            message = "? Р’С‹ СѓР¶Рµ РїРѕРґРїРёСЃР°РЅС‹ РЅР° РЅР°С€ РєР°РЅР°Р»!\n?? Р‘РѕРЅСѓСЃ +3 СЂР°СЃРєР»Р°РґР° СѓР¶Рµ РЅР°С‡РёСЃР»РµРЅ."
         else:
             message = (
-                "?? �������� �� ����� ??\n"
-                "\n����������� �� ��� ������������� ����� � �������� +3 ���������� ��������!\n"
-                "\n? �����: https://t.me/+5q7VJBPU4_QyMDky\n"
-                "\n����� �������� ������� ������ ����:"
+                "?? РџРћР”РџРРЎРљРђ РќРђ РљРђРќРђР› ??\n"
+                "\nРџРѕРґРїРёС€РёС‚РµСЃСЊ РЅР° РЅР°С€ СЌР·РѕС‚РµСЂРёС‡РµСЃРєРёР№ РєР°РЅР°Р» Рё РїРѕР»СѓС‡РёС‚Рµ +3 Р±РµСЃРїР»Р°С‚РЅС‹С… СЂР°СЃРєР»Р°РґР°!\n"
+                "\n? РљР°РЅР°Р»: https://t.me/+5q7VJBPU4_QyMDky\n"
+                "\nРџРѕСЃР»Рµ РїРѕРґРїРёСЃРєРё РЅР°Р¶РјРёС‚Рµ РєРЅРѕРїРєСѓ РЅРёР¶Рµ:"
             )
         keyboard = [
-            [InlineKeyboardButton("?? ������� � �����", url="https://t.me/+5q7VJBPU4_QyMDky")],
-            [InlineKeyboardButton("? � ���������� (+3 ��������)", callback_data='confirm_subscribe')],
-            [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? РџРµСЂРµР№С‚Рё РІ РєР°РЅР°Р»", url="https://t.me/+5q7VJBPU4_QyMDky")],
+            [InlineKeyboardButton("? РЇ РїРѕРґРїРёСЃР°Р»СЃСЏ (+3 СЂР°СЃРєР»Р°РґР°)", callback_data='confirm_subscribe')],
+            [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -666,7 +666,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         subscribed_db = check_subscribed(user_id)
         
         if subscribed_db:
-            message = "? �� ��� �������� ����� �� ��������!"
+            message = "? Р’С‹ СѓР¶Рµ РїРѕР»СѓС‡РёР»Рё Р±РѕРЅСѓСЃ Р·Р° РїРѕРґРїРёСЃРєСѓ!"
         else:
             try:
                 chat_member = await context.bot.get_chat_member(
@@ -675,58 +675,58 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 if chat_member.status in ["member", "administrator", "creator"]:
                     mark_subscribed(user_id)
-                    message = "?? ���! �� ����������� �� �����!\n? ����� +3 ���������� �������� �������� �� ��� ����!"
+                    message = "?? РЈСЂР°! Р’С‹ РїРѕРґРїРёСЃР°Р»РёСЃСЊ РЅР° РєР°РЅР°Р»!\n? Р‘РѕРЅСѓСЃ +3 Р±РµСЃРїР»Р°С‚РЅС‹С… СЂР°СЃРєР»Р°РґР° РЅР°С‡РёСЃР»РµРЅ РЅР° РІР°С€ СЃС‡С‘С‚!"
                 else:
-                    message = "? �� �� ��������� �� �����.\n����������, ����������� � ������� ������ �����."
+                    message = "? Р’С‹ РЅРµ РїРѕРґРїРёСЃР°РЅС‹ РЅР° РєР°РЅР°Р».\nРџРѕР¶Р°Р»СѓР№СЃС‚Р°, РїРѕРґРїРёС€РёС‚РµСЃСЊ Рё РЅР°Р¶РјРёС‚Рµ РєРЅРѕРїРєСѓ СЃРЅРѕРІР°."
             except Exception as e:
-                print(f"������ �������� ��������: {e}")
-                message = "? �� ������� ��������� ��������. ���������� �����."
+                print(f"РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё РїРѕРґРїРёСЃРєРё: {e}")
+                message = "? РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕРІРµСЂРёС‚СЊ РїРѕРґРїРёСЃРєСѓ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ."
         
-        keyboard = [[InlineKeyboardButton("?? ����", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'help':
         message = (
-            "? ������ ?\n"
-            "\n? ��� ������������ �����:\n"
-            "� ?? ����� ��� � ���������� ������� �� ������� (1 ��� � ����)\n"
-            "� ?? ������� ������� � ��������� ������� �� 3+ ���� (����������� � �������)\n"
-            "� ?? ��������� ������� � ��������� ��������� � ���� �� 3 �����\n"
-            "\n??? ���������� ���������:\n"
-            "� � ��� ���� 3 ������ ��� ���������� ���������.\n"
-            "� �������� �� ����������� ������������� � ������ �� ������ ������.\n"
-            "� ���� ��� ������ ������ � ������� ������� ������ �������.\n"
-            "\n?? ������:\n"
-            "� ��� �����������: 1 ���������� �������.\n"
-            "� ?? ����� ��� � ������ ���������, 1 ��� � ����.\n"
-            "� �� �����: +1 �������.\n"
-            "� �� ��������: +3 ��������.\n"
-            "� ������� ������� �� ������� �� 15%.\n"
-            "\n?? ������:\n"
-            "� ���������� ����� � ������ �������� ��������� ?\n"
-            "� ������������ � � ���������� ??\n"
-            "� ��������� �� ��������: /terms"
+            "? РџРћРњРћР©Р¬ ?\n"
+            "\n? РљРђРљ РџРћР›Р¬Р—РћР’РђРўР¬РЎРЇ Р‘РћРўРћРњ:\n"
+            "вЂў ?? РљР°СЂС‚Р° РґРЅСЏ вЂ” Р±РµСЃРїР»Р°С‚РЅРѕРµ РіР°РґР°РЅРёРµ РЅР° СЃРµРіРѕРґРЅСЏ (1 СЂР°Р· РІ РґРµРЅСЊ)\n"
+            "вЂў ?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ вЂ” РїРѕРґСЂРѕР±РЅС‹Р№ СЂР°СЃРєР»Р°Рґ РёР· 3+ РєР°СЂС‚ (СЃРїРёСЃС‹РІР°РµС‚СЃСЏ СЃ Р±Р°Р»Р°РЅСЃР°)\n"
+            "вЂў ?? РЎРѕС…СЂР°РЅРёС‚СЊ СЂР°СЃРєР»Р°Рґ вЂ” СЃРѕС…СЂР°РЅРёС‚Рµ СЂРµР·СѓР»СЊС‚Р°С‚ РІ РѕРґРЅСѓ РёР· 3 СЏС‡РµРµРє\n"
+            "\n??? РЎРћРҐР РђРќР•РќРР• Р РђРЎРљР›РђР”РћР’:\n"
+            "вЂў РЈ РІР°СЃ РµСЃС‚СЊ 3 СЏС‡РµР№РєРё РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЂР°СЃРєР»Р°РґРѕРІ.\n"
+            "вЂў Р Р°СЃРєР»Р°РґС‹ РќР• СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё вЂ” С‚РѕР»СЊРєРѕ РїРѕ РІР°С€РµРјСѓ РІС‹Р±РѕСЂСѓ.\n"
+            "вЂў Р•СЃР»Рё РІСЃРµ СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹ вЂ” СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ СЃС‚Р°СЂС‹Р№ СЂР°СЃРєР»Р°Рґ.\n"
+            "\n?? Р‘РђР›РђРќРЎ:\n"
+            "вЂў РџСЂРё СЂРµРіРёСЃС‚СЂР°С†РёРё: 1 Р±РµСЃРїР»Р°С‚РЅС‹Р№ СЂР°СЃРєР»Р°Рґ.\n"
+            "вЂў ?? РљР°СЂС‚Р° РґРЅСЏ вЂ” РІСЃРµРіРґР° Р±РµСЃРїР»Р°С‚РЅРѕ, 1 СЂР°Р· РІ РґРµРЅСЊ.\n"
+            "вЂў Р—Р° РґСЂСѓРіР°: +1 СЂР°СЃРєР»Р°Рґ.\n"
+            "вЂў Р—Р° РїРѕРґРїРёСЃРєСѓ: +3 СЂР°СЃРєР»Р°РґР°.\n"
+            "вЂў РџРѕРєСѓРїРєР° РїР°РєРµС‚РѕРІ СЃРѕ СЃРєРёРґРєРѕР№ РґРѕ 15%.\n"
+            "\n?? РћРџР›РђРўРђ:\n"
+            "вЂў Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р° вЂ” СЂСѓС‡РЅР°СЏ РїСЂРѕРІРµСЂРєР° СЃРєСЂРёРЅС€РѕС‚Р° ?\n"
+            "вЂў РљСЂРёРїС‚РѕРІР°Р»СЋС‚Р° вЂ” РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ ??\n"
+            "вЂў РџРѕРґСЂРѕР±РЅРµРµ РѕР± СѓСЃР»РѕРІРёСЏС…: /terms"
         )
-        keyboard = [[InlineKeyboardButton("?? ����", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'back_to_menu':
         user_data = get_user_data(user_id)
         if not user_data or not user_data.get('name'):
-            await query.message.reply_text("�������� ��� ���:")
+            await query.message.reply_text("РќР°РїРёС€РёС‚Рµ СЃРІРѕС‘ РёРјСЏ:")
             return
         
         balance = get_balance(user_id)
-        message = f"?? ����� ���������� � ��� ����! ??\n? {user_data['name']}, ��� ������: {balance} ���������"
+        message = f"?? Р”РћР‘Р Рћ РџРћР–РђР›РћР’РђРўР¬ Р’ РњРР  РўРђР Рћ! ??\n? {user_data['name']}, РІР°С€ Р±Р°Р»Р°РЅСЃ: {balance} СЂР°СЃРєР»Р°РґРѕРІ"
         keyboard = [
-            [InlineKeyboardButton("?? ����� ��� (���������)", callback_data='daily_card')],
-            [InlineKeyboardButton("?? ������� �������", callback_data='do_tarot')],
-            [InlineKeyboardButton(f"?? ������: {balance}", callback_data='balance')],
-            [InlineKeyboardButton("?? �������� (+3)", callback_data='subscribe')],
-            [InlineKeyboardButton("??? ��� ��������", callback_data='saved_readings')],
-            [InlineKeyboardButton("? ������", callback_data='help')]
+            [InlineKeyboardButton("?? РљР°СЂС‚Р° РґРЅСЏ (Р±РµСЃРїР»Р°С‚РЅРѕ)", callback_data='daily_card')],
+            [InlineKeyboardButton("?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
+            [InlineKeyboardButton(f"?? Р‘Р°Р»Р°РЅСЃ: {balance}", callback_data='balance')],
+            [InlineKeyboardButton("?? РџРѕРґРїРёСЃРєР° (+3)", callback_data='subscribe')],
+            [InlineKeyboardButton("??? РњРѕРё СЂР°СЃРєР»Р°РґС‹", callback_data='saved_readings')],
+            [InlineKeyboardButton("? РџРѕРјРѕС‰СЊ", callback_data='help')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -738,19 +738,19 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name'):
-        await query.message.reply_text("������� ������� ��� � ���� �������� ����� /start")
+        await query.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
         return
     
     balance = get_balance(user_id)
     if balance <= 0:
         keyboard = [
-            [InlineKeyboardButton("?? ������ ��������", callback_data='buy_packs')],
-            [InlineKeyboardButton("?? ����������� (+3)", callback_data='subscribe')],
-            [InlineKeyboardButton("?? ����", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? РљСѓРїРёС‚СЊ СЂР°СЃРєР»Р°РґС‹", callback_data='buy_packs')],
+            [InlineKeyboardButton("?? РџРѕРґРїРёСЃР°С‚СЊСЃСЏ (+3)", callback_data='subscribe')],
+            [InlineKeyboardButton("?? РњРµРЅСЋ", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            text="?? � ��� ����������� ��������.\n?? ��������� ������ ��� �������� ������!",
+            text="?? РЈ РІР°СЃ Р·Р°РєРѕРЅС‡РёР»РёСЃСЊ СЂР°СЃРєР»Р°РґС‹.\n?? РџРѕРїРѕР»РЅРёС‚Рµ Р±Р°Р»Р°РЅСЃ РёР»Рё РїРѕР»СѓС‡РёС‚Рµ Р±РѕРЅСѓСЃС‹!",
             reply_markup=reply_markup
         )
         return
@@ -758,13 +758,13 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     spreads = get_spread_options()
     spreads.pop('daily', None)
     
-    message = "?? �������� ��� �������� ??\n\n"
+    message = "?? Р’Р«Р‘Р•Р РРўР• РўРРџ Р РђРЎРљР›РђР”Рђ ??\n\n"
     keyboard = []
     
     for spread_id, spread_info in spreads.items():
         keyboard.append([InlineKeyboardButton(spread_info['name'], callback_data=f'spread_{spread_id}')])
     
-    keyboard.append([InlineKeyboardButton("?? �����", callback_data='back_to_menu')])
+    keyboard.append([InlineKeyboardButton("?? РќР°Р·Р°Рґ", callback_data='back_to_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text=message, reply_markup=reply_markup)
 
@@ -792,19 +792,19 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user_data(user_id)
     
     if not user_data or not user_data.get('name'):
-        await update.message.reply_text("������� ������� ��� � ���� �������� ����� /start")
+        await update.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
         return
     
     balance = get_balance(user_id)
-    message = f"?? ����� ���������� � ��� ����! ??\n? {user_data['name']}, ��� ������: {balance} ���������"
+    message = f"?? Р”РћР‘Р Рћ РџРћР–РђР›РћР’РђРўР¬ Р’ РњРР  РўРђР Рћ! ??\n? {user_data['name']}, РІР°С€ Р±Р°Р»Р°РЅСЃ: {balance} СЂР°СЃРєР»Р°РґРѕРІ"
     
     keyboard = [
-        [InlineKeyboardButton("?? ����� ��� (���������)", callback_data='daily_card')],
-        [InlineKeyboardButton("?? ������� �������", callback_data='do_tarot')],
-        [InlineKeyboardButton(f"?? ������: {balance}", callback_data='balance')],
-        [InlineKeyboardButton("?? �������� (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("??? ��� ��������", callback_data='saved_readings')],
-        [InlineKeyboardButton("? ������", callback_data='help')]
+        [InlineKeyboardButton("?? РљР°СЂС‚Р° РґРЅСЏ (Р±РµСЃРїР»Р°С‚РЅРѕ)", callback_data='daily_card')],
+        [InlineKeyboardButton("?? РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"?? Р‘Р°Р»Р°РЅСЃ: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("?? РџРѕРґРїРёСЃРєР° (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("??? РњРѕРё СЂР°СЃРєР»Р°РґС‹", callback_data='saved_readings')],
+        [InlineKeyboardButton("? РџРѕРјРѕС‰СЊ", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
