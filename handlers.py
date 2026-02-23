@@ -1,4 +1,4 @@
-п»їimport re
+import re
 import requests
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -14,7 +14,7 @@ from utils import (
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice
 )
 
-# === РљРћРќРЎРўРђРќРўР« РЎРћРЎРўРћРЇРќРР™ (РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ РћРџР Р•Р”Р•Р›Р•РќР« РџР•Р Р’Р«РњР) ===
+# === КОНСТАНТЫ СОСТОЯНИЙ (должны быть ОПРЕДЕЛЕНЫ ПЕРВЫМИ) ===
 ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE = range(5)
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -29,7 +29,7 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     try:
                         await context.bot.send_message(
                             chat_id=referrer_id,
-                            text=f"рџЋ‰ РћС‚Р»РёС‡РЅРѕ! Р’Р°С€ РґСЂСѓРі {user.first_name} РїСЂРёСЃРѕРµРґРёРЅРёР»СЃСЏ!\nР’С‹ РїРѕР»СѓС‡РёР»Рё +1 СЂР°СЃРєР»Р°Рґ Рє Р±Р°Р»Р°РЅСЃСѓ!"
+                            text=f"?? Отлично! Ваш друг {user.first_name} присоединился!\nВы получили +1 расклад к балансу!"
                         )
                     except: pass
         except: pass
@@ -37,22 +37,22 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user_data(user.id)
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
         await update.message.reply_text(
-            "вњЁ Р”РѕР±СЂРѕ РїРѕР¶Р°Р»РѕРІР°С‚СЊ РІ РјРёСЂ РўР°СЂРѕ!\n\n"
-            "рџ”® Р”Р»СЏ РїРµСЂСЃРѕРЅР°Р»РёР·РёСЂРѕРІР°РЅРЅРѕРіРѕ РіР°РґР°РЅРёСЏ РјРЅРµ РЅСѓР¶РЅРѕ СѓР·РЅР°С‚СЊ РІР°СЃ РЅРµРјРЅРѕРіРѕ Р»СѓС‡С€Рµ.\n\n"
-            "рџ’« РЎРЅР°С‡Р°Р»Р° РЅР°РїРёС€РёС‚Рµ, РєР°Рє РІР°СЃ Р·РѕРІСѓС‚:"
+            "? Добро пожаловать в мир Таро!\n\n"
+            "?? Для персонализированного гадания мне нужно узнать вас немного лучше.\n\n"
+            "?? Сначала напишите, как вас зовут:"
         )
         return ASKING_NAME
     
     balance = get_balance(user.id)
-    message = f"рџ”® Р”РћР‘Р Рћ РџРћР–РђР›РћР’РђРўР¬ Р’ РњРР  РўРђР Рћ! рџ”®\nвњЁ {user_data['name']}, РІР°С€ Р±Р°Р»Р°РЅСЃ: {balance} СЂР°СЃРєР»Р°РґРѕРІ"
+    message = f"?? ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! ??\n? {user_data['name']}, ваш баланс: {balance} раскладов"
     
     keyboard = [
-        [InlineKeyboardButton("рџЊ… РљР°СЂС‚Р° РґРЅСЏ (Р±РµСЃРїР»Р°С‚РЅРѕ)", callback_data='daily_card')],
-        [InlineKeyboardButton("рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
-        [InlineKeyboardButton(f"вљ–пёЏ Р‘Р°Р»Р°РЅСЃ: {balance}", callback_data='balance')],
-        [InlineKeyboardButton("рџ“є РџРѕРґРїРёСЃРєР° (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("рџ—„пёЏ РњРѕРё СЂР°СЃРєР»Р°РґС‹", callback_data='saved_readings')],
-        [InlineKeyboardButton("вќ“ РџРѕРјРѕС‰СЊ", callback_data='help')]
+        [InlineKeyboardButton("?? Карта дня (бесплатно)", callback_data='daily_card')],
+        [InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"?? Баланс: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("?? Подписка (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("??? Мои расклады", callback_data='saved_readings')],
+        [InlineKeyboardButton("? Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
@@ -61,18 +61,18 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     name = update.message.text.strip()
     if len(name) < 2:
-        await update.message.reply_text("вќЊ РРјСЏ РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ РЅРµ РјРµРЅРµРµ 2 СЃРёРјРІРѕР»РѕРІ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·:")
+        await update.message.reply_text("? Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
         return ASKING_NAME
     
-    if not re.match(r'^[Р°-СЏРђ-РЇa-zA-Z\s]+$', name):
-        await update.message.reply_text("вќЊ РРјСЏ РјРѕР¶РµС‚ СЃРѕРґРµСЂР¶Р°С‚СЊ С‚РѕР»СЊРєРѕ Р±СѓРєРІС‹ Рё РїСЂРѕР±РµР»С‹. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰С‘ СЂР°Р·:")
+    if not re.match(r'^[а-яА-Яa-zA-Z\s]+$', name):
+        await update.message.reply_text("? Имя может содержать только буквы и пробелы. Попробуйте ещё раз:")
         return ASKING_NAME
     
     context.user_data['temp_name'] = name
     await update.message.reply_text(
-        f"вњЁ РџСЂРёСЏС‚РЅРѕ РїРѕР·РЅР°РєРѕРјРёС‚СЊСЃСЏ, {name}!\n\n"
-        "рџ’« РўРµРїРµСЂСЊ РЅР°РїРёС€РёС‚Рµ РІР°С€Сѓ РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ РІ С„РѕСЂРјР°С‚Рµ:\n"
-        "рџ“… Р”Р”.РњРњ.Р“Р“Р“Р“ (РЅР°РїСЂРёРјРµСЂ: 15.08.1990)"
+        f"? Приятно познакомиться, {name}!\n\n"
+        "?? Теперь напишите вашу дату рождения в формате:\n"
+        "?? ДД.ММ.ГГГГ (например: 15.08.1990)"
     )
     return ASKING_BIRTHDATE
 
@@ -81,9 +81,9 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if not re.match(r'^\d{2}\.\d{2}\.\d{4}$', birthdate):
         await update.message.reply_text(
-            "вќЊ РќРµРІРµСЂРЅС‹Р№ С„РѕСЂРјР°С‚ РґР°С‚С‹.\n"
-            "рџ“… РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РЅР°РїРёС€РёС‚Рµ РІ С„РѕСЂРјР°С‚Рµ Р”Р”.РњРњ.Р“Р“Р“Р“\n"
-            "РџСЂРёРјРµСЂ: 15.08.1990"
+            "? Неверный формат даты.\n"
+            "?? Пожалуйста, напишите в формате ДД.ММ.ГГГГ\n"
+            "Пример: 15.08.1990"
         )
         return ASKING_BIRTHDATE
     
@@ -94,20 +94,20 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         if birth_date > today or year < 1900:
             await update.message.reply_text(
-                "вќЊ РџСЂРѕРІРµСЂСЊС‚Рµ РґР°С‚Сѓ: РіРѕРґ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РїРѕСЃР»Рµ 1900, Р° РґР°С‚Р° вЂ” РЅРµ РІ Р±СѓРґСѓС‰РµРј.\n"
-                "рџ“… РџСЂРёРјРµСЂ РїСЂР°РІРёР»СЊРЅРѕР№ РґР°С‚С‹: 15.08.1990"
+                "? Проверьте дату: год должен быть после 1900, а дата — не в будущем.\n"
+                "?? Пример правильной даты: 15.08.1990"
             )
             return ASKING_BIRTHDATE
             
     except ValueError:
         await update.message.reply_text(
-            "вќЊ РќРµРІРµСЂРЅР°СЏ РґР°С‚Р°. РЈР±РµРґРёС‚РµСЃСЊ, С‡С‚Рѕ РґР°С‚Р° СЃСѓС‰РµСЃС‚РІСѓРµС‚.\n"
-            "рџ“… РџСЂРёРјРµСЂ: 15.08.1990 (Р° РЅРµ 31.02.1990)"
+            "? Неверная дата. Убедитесь, что дата существует.\n"
+            "?? Пример: 15.08.1990 (а не 31.02.1990)"
         )
         return ASKING_BIRTHDATE
     
     user_id = update.effective_user.id
-    name = context.user_data.get('temp_name', 'РђРЅРѕРЅРёРј')
+    name = context.user_data.get('temp_name', 'Аноним')
     save_user_data(user_id, name, birthdate)
     
     if 'temp_name' in context.user_data:
@@ -115,21 +115,21 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     balance = get_balance(user_id)
     await update.message.reply_text(
-        f"вњ… РћС‚Р»РёС‡РЅРѕ, {name}! Р”Р°РЅРЅС‹Рµ СЃРѕС…СЂР°РЅРµРЅС‹.\n\n"
-        f"вњЁ Р’Р°С€ Р±Р°Р»Р°РЅСЃ: {balance} СЂР°СЃРєР»Р°РґРѕРІ\n"
-        f"рџЋґ Р“РѕС‚РѕРІС‹ Рє РїРµСЂРІРѕРјСѓ РіР°РґР°РЅРёСЋ?"
+        f"? Отлично, {name}! Данные сохранены.\n\n"
+        f"? Ваш баланс: {balance} раскладов\n"
+        f"?? Готовы к первому гаданию?"
     )
     
     keyboard = [
-        [InlineKeyboardButton("рџЊ… РљР°СЂС‚Р° РґРЅСЏ (Р±РµСЃРїР»Р°С‚РЅРѕ)", callback_data='daily_card')],
-        [InlineKeyboardButton("рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
-        [InlineKeyboardButton(f"вљ–пёЏ Р‘Р°Р»Р°РЅСЃ: {balance}", callback_data='balance')],
-        [InlineKeyboardButton("рџ“є РџРѕРґРїРёСЃРєР° (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("рџ—„пёЏ РњРѕРё СЂР°СЃРєР»Р°РґС‹", callback_data='saved_readings')],
-        [InlineKeyboardButton("вќ“ РџРѕРјРѕС‰СЊ", callback_data='help')]
+        [InlineKeyboardButton("?? Карта дня (бесплатно)", callback_data='daily_card')],
+        [InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"?? Баланс: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("?? Подписка (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("??? Мои расклады", callback_data='saved_readings')],
+        [InlineKeyboardButton("? Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("рџ”® Р’С‹Р±РµСЂРёС‚Рµ РґРµР№СЃС‚РІРёРµ:", reply_markup=reply_markup)
+    await update.message.reply_text("?? Выберите действие:", reply_markup=reply_markup)
     return ConversationHandler.END
 
 async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -138,15 +138,15 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     occupied = len(slots)
     free = 3 - occupied
     
-    message = f"рџ—„пёЏ РњРћР РЎРћРҐР РђРќРЃРќРќР«Р• Р РђРЎРљР›РђР”Р« рџ—„пёЏ\n\nрџ“¦ Р”РѕСЃС‚СѓРїРЅРѕ СЏС‡РµРµРє РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ: {occupied}/3\n"
+    message = f"??? МОИ СОХРАНЁННЫЕ РАСКЛАДЫ ???\n\n?? Доступно ячеек для сохранения: {occupied}/3\n"
     if free > 0:
-        message += f"вњЁ РЎРІРѕР±РѕРґРЅРѕ СЏС‡РµРµРє: {free}\n\n"
+        message += f"? Свободно ячеек: {free}\n\n"
     else:
-        message += "вљ пёЏ Р’СЃРµ СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹.\n\n"
+        message += "?? Все ячейки заняты.\n\n"
     
     if not slots:
-        message += "РЈ РІР°СЃ РїРѕРєР° РЅРµС‚ СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… СЂР°СЃРєР»Р°РґРѕРІ.\nРЎРґРµР»Р°Р№С‚Рµ СЂР°СЃРєР»Р°Рґ Рё РЅР°Р¶РјРёС‚Рµ В«рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊВ»!"
-        keyboard = [[InlineKeyboardButton("рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')]]
+        message += "У вас пока нет сохранённых раскладов.\nСделайте расклад и нажмите «?? Сохранить»!"
+        keyboard = [[InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(text=message, reply_markup=reply_markup)
         return
@@ -154,22 +154,22 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = []
     for slot_num in sorted(slots.keys()):
         timestamp = slots[slot_num]
-        keyboard.append([InlineKeyboardButton(f"рџ“¦ РЇС‡РµР№РєР° #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
+        keyboard.append([InlineKeyboardButton(f"?? Ячейка #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
 async def terms_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
-        "рџ“„ РЈРЎР›РћР’РРЇ РћРџР›РђРўР« Р РЎРћР“Р›РђРЎРР• рџ“„\n"
-        "\nрџ’« Р’РђР–РќРћ: Р»СЋР±Р°СЏ РѕРїР»Р°С‚Р° РІ СЌС‚РѕРј Р±РѕС‚Рµ СЏРІР»СЏРµС‚СЃСЏ Р”РћР‘Р РћР’РћР›Р¬РќР«Рњ Р”РћРќРђРўРћРњ.\n"
-        "Р Р°СЃРєР»Р°РґС‹ РўР°СЂРѕ РїСЂРµРґРѕСЃС‚Р°РІР»СЏСЋС‚СЃСЏ РІ СЂР°Р·РІР»РµРєР°С‚РµР»СЊРЅС‹С… С†РµР»СЏС….\n"
-        "РРЅС‚РµСЂРїСЂРµС‚Р°С†РёРё РєР°СЂС‚ РЅРµ СЏРІР»СЏСЋС‚СЃСЏ РїСЂРµРґСЃРєР°Р·Р°РЅРёРµРј Р±СѓРґСѓС‰РµРіРѕ Рё РЅРµ Р·Р°РјРµРЅСЏСЋС‚ РєРѕРЅСЃСѓР»СЊС‚Р°С†РёСЋ СЃРїРµС†РёР°Р»РёСЃС‚Р°.\n"
-        "\nвњ… РќР°Р¶РёРјР°СЏ В«РћРїР»Р°С‚РёС‚СЊВ», РІС‹ СЃРѕРіР»Р°С€Р°РµС‚РµСЃСЊ СЃ С‚РµРј, С‡С‚Рѕ:\n"
-        "вЂў РћРїР»Р°С‚Р° РґРѕР±СЂРѕРІРѕР»СЊРЅР°СЏ Рё РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅР°СЏ.\n"
-        "вЂў Р Р°СЃРєР»Р°РґС‹ РЅРѕСЃСЏС‚ СЂР°Р·РІР»РµРєР°С‚РµР»СЊРЅС‹Р№ С…Р°СЂР°РєС‚РµСЂ.\n"
-        "вЂў Р’С‹ СЃРѕРІРµСЂС€Р°РµС‚Рµ РїР»Р°С‚С‘Р¶ РїРѕ СЃРѕР±СЃС‚РІРµРЅРЅРѕР№ РІРѕР»Рµ Р±РµР· РїСЂРёРЅСѓР¶РґРµРЅРёСЏ.\n"
-        "вЂў Р’РѕР·РІСЂР°С‚ СЃСЂРµРґСЃС‚РІ РЅРµ РїСЂРµРґСѓСЃРјРѕС‚СЂРµРЅ (РґРѕР±СЂРѕРІРѕР»СЊРЅС‹Р№ РґРѕРЅР°С‚).\n"
-        "\nвњЁ РЎРїР°СЃРёР±Рѕ Р·Р° РїРѕРґРґРµСЂР¶РєСѓ РїСЂРѕРµРєС‚Р°! рџ’«"
+        "?? УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ ??\n"
+        "\n?? ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+        "Расклады Таро предоставляются в развлекательных целях.\n"
+        "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n"
+        "\n? Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+        "• Оплата добровольная и необязательная.\n"
+        "• Расклады носят развлекательный характер.\n"
+        "• Вы совершаете платёж по собственной воле без принуждения.\n"
+        "• Возврат средств не предусмотрен (добровольный донат).\n"
+        "\n? Спасибо за поддержку проекта! ??"
     )
     await update.message.reply_text(text=message)
 
@@ -178,7 +178,7 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user_data(user_id)
     
     if not user_data or not user_data.get('name'):
-        await update.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
+        await update.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
     
     if can_get_daily_card(user_id):
@@ -189,17 +189,17 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.message.reply_text(text=reading)
         await update.message.reply_text(
-            text="рџЊ… РљР°СЂС‚Р° РґРЅСЏ РїРѕР»СѓС‡РµРЅР°! Р’РѕР·РІСЂР°С‰Р°Р№С‚РµСЃСЊ Р·Р°РІС‚СЂР° Р·Р° РЅРѕРІРѕР№ РєР°СЂС‚РѕР№.",
+            text="?? Карта дня получена! Возвращайтесь завтра за новой картой.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
-                [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]
+                [InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')],
+                [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
             ])
         )
     else:
         await update.message.reply_text(
-            text="рџЊ… Р’С‹ СѓР¶Рµ РїРѕР»СѓС‡РёР»Рё РєР°СЂС‚Сѓ РґРЅСЏ СЃРµРіРѕРґРЅСЏ!\nР’РѕР·РІСЂР°С‰Р°Р№С‚РµСЃСЊ Р·Р°РІС‚СЂР° Р·Р° РЅРѕРІРѕР№ РєР°СЂС‚РѕР№ вЂпёЏ",
+            text="?? Вы уже получили карту дня сегодня!\nВозвращайтесь завтра за новой картой ??",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]
+                [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
             ])
         )
 
@@ -208,50 +208,50 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_data = get_user_data(user_id)
     
     if not user_data or not user_data.get('name'):
-        await update.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
+        await update.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
     
     balance = get_balance(user_id)
     message = (
-        f"вљ–пёЏ Р’РђРЁ РўР•РљРЈР©РР™ Р‘РђР›РђРќРЎ вљ–пёЏ\n"
-        f"\nрџ”® Р”РѕСЃС‚СѓРїРЅРѕ СЂР°СЃРєР»Р°РґРѕРІ: {balance}\n"
-        f"\nвњЁ РљР°Рє РїРѕР»СѓС‡РёС‚СЊ Р±РѕР»СЊС€Рµ СЂР°СЃРєР»Р°РґРѕРІ:\n"
-        f"вЂў РџСЂРёРіР»Р°СЃРёС‚Рµ РґСЂСѓРіР° вЂ” +1 СЂР°СЃРєР»Р°Рґ рџЋЃ\n"
-        f"вЂў РџРѕРґРїРёС€РёС‚РµСЃСЊ РЅР° РєР°РЅР°Р» вЂ” +3 СЂР°СЃРєР»Р°РґР° рџ“є\n"
-        f"вЂў РљСѓРїРёС‚Рµ РїР°РєРµС‚ СЂР°СЃРєР»Р°РґРѕРІ СЃРѕ СЃРєРёРґРєРѕР№ рџ’і"
+        f"?? ВАШ ТЕКУЩИЙ БАЛАНС ??\n"
+        f"\n?? Доступно раскладов: {balance}\n"
+        f"\n? Как получить больше раскладов:\n"
+        f"• Пригласите друга — +1 расклад ??\n"
+        f"• Подпишитесь на канал — +3 расклада ??\n"
+        f"• Купите пакет раскладов со скидкой ??"
     )
     keyboard = [
-        [InlineKeyboardButton("рџ’і РљСѓРїРёС‚СЊ СЂР°СЃРєР»Р°РґС‹", callback_data='buy_packs')],
-        [InlineKeyboardButton("рџ’« РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓРіР°", callback_data='referral')],
-        [InlineKeyboardButton("рџ“є РџРѕРґРїРёСЃР°С‚СЊСЃСЏ (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]
+        [InlineKeyboardButton("?? Купить расклады", callback_data='buy_packs')],
+        [InlineKeyboardButton("?? Пригласить друга", callback_data='referral')],
+        [InlineKeyboardButton("?? Подписаться (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
-        "вќ“ РџРћРњРћР©Р¬ вќ“\n"
-        "\nвњЁ РљРђРљ РџРћР›Р¬Р—РћР’РђРўР¬РЎРЇ Р‘РћРўРћРњ:\n"
-        "вЂў рџЊ… РљР°СЂС‚Р° РґРЅСЏ вЂ” Р±РµСЃРїР»Р°С‚РЅРѕРµ РіР°РґР°РЅРёРµ РЅР° СЃРµРіРѕРґРЅСЏ (1 СЂР°Р· РІ РґРµРЅСЊ)\n"
-        "вЂў рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ вЂ” РїРѕРґСЂРѕР±РЅС‹Р№ СЂР°СЃРєР»Р°Рґ РёР· 3+ РєР°СЂС‚ (СЃРїРёСЃС‹РІР°РµС‚СЃСЏ СЃ Р±Р°Р»Р°РЅСЃР°)\n"
-        "вЂў рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊ СЂР°СЃРєР»Р°Рґ вЂ” СЃРѕС…СЂР°РЅРёС‚Рµ СЂРµР·СѓР»СЊС‚Р°С‚ РІ РѕРґРЅСѓ РёР· 3 СЏС‡РµРµРє\n"
-        "\nрџ—„пёЏ РЎРћРҐР РђРќР•РќРР• Р РђРЎРљР›РђР”РћР’:\n"
-        "вЂў РЈ РІР°СЃ РµСЃС‚СЊ 3 СЏС‡РµР№РєРё РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЂР°СЃРєР»Р°РґРѕРІ.\n"
-        "вЂў Р Р°СЃРєР»Р°РґС‹ РќР• СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё вЂ” С‚РѕР»СЊРєРѕ РїРѕ РІР°С€РµРјСѓ РІС‹Р±РѕСЂСѓ.\n"
-        "вЂў Р•СЃР»Рё РІСЃРµ СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹ вЂ” СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ СЃС‚Р°СЂС‹Р№ СЂР°СЃРєР»Р°Рґ.\n"
-        "\nвљ–пёЏ Р‘РђР›РђРќРЎ:\n"
-        "вЂў РџСЂРё СЂРµРіРёСЃС‚СЂР°С†РёРё: 1 Р±РµСЃРїР»Р°С‚РЅС‹Р№ СЂР°СЃРєР»Р°Рґ.\n"
-        "вЂў рџЊ… РљР°СЂС‚Р° РґРЅСЏ вЂ” РІСЃРµРіРґР° Р±РµСЃРїР»Р°С‚РЅРѕ, 1 СЂР°Р· РІ РґРµРЅСЊ.\n"
-        "вЂў Р—Р° РґСЂСѓРіР°: +1 СЂР°СЃРєР»Р°Рґ.\n"
-        "вЂў Р—Р° РїРѕРґРїРёСЃРєСѓ: +3 СЂР°СЃРєР»Р°РґР°.\n"
-        "вЂў РџРѕРєСѓРїРєР° РїР°РєРµС‚РѕРІ СЃРѕ СЃРєРёРґРєРѕР№ РґРѕ 15%.\n"
-        "\nрџ’і РћРџР›РђРўРђ:\n"
-        "вЂў Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р° вЂ” СЂСѓС‡РЅР°СЏ РїСЂРѕРІРµСЂРєР° СЃРєСЂРёРЅС€РѕС‚Р° вЏі\n"
-        "вЂў РљСЂРёРїС‚РѕРІР°Р»СЋС‚Р° вЂ” РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ рџ”њ\n"
-        "вЂў РџРѕРґСЂРѕР±РЅРµРµ РѕР± СѓСЃР»РѕРІРёСЏС…: /terms"
+        "? ПОМОЩЬ ?\n"
+        "\n? КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
+        "• ?? Карта дня — бесплатное гадание на сегодня (1 раз в день)\n"
+        "• ?? Сделать расклад — подробный расклад из 3+ карт (списывается с баланса)\n"
+        "• ?? Сохранить расклад — сохраните результат в одну из 3 ячеек\n"
+        "\n??? СОХРАНЕНИЕ РАСКЛАДОВ:\n"
+        "• У вас есть 3 ячейки для сохранения раскладов.\n"
+        "• Расклады НЕ сохраняются автоматически — только по вашему выбору.\n"
+        "• Если все ячейки заняты — сначала удалите старый расклад.\n"
+        "\n?? БАЛАНС:\n"
+        "• При регистрации: 1 бесплатный расклад.\n"
+        "• ?? Карта дня — всегда бесплатно, 1 раз в день.\n"
+        "• За друга: +1 расклад.\n"
+        "• За подписку: +3 расклада.\n"
+        "• Покупка пакетов со скидкой до 15%.\n"
+        "\n?? ОПЛАТА:\n"
+        "• Банковская карта — ручная проверка скриншота ?\n"
+        "• Криптовалюта — в разработке ??\n"
+        "• Подробнее об условиях: /terms"
     )
-    keyboard = [[InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]]
+    keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
@@ -264,23 +264,23 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name'):
-        await query.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
+        await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
     
     balance = get_balance(user_id)
     if balance <= 0:
-        await query.edit_message_text(text="вќЊ РЈ РІР°СЃ РЅРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЂР°СЃРєР»Р°РґРѕРІ. РџРѕРїРѕР»РЅРёС‚Рµ Р±Р°Р»Р°РЅСЃ!")
+        await query.edit_message_text(text="? У вас недостаточно раскладов. Пополните баланс!")
         return
     
     if not decrease_balance(user_id, 1):
-        await query.edit_message_text(text="вќЊ РћС€РёР±РєР° РїСЂРё СЃРїРёСЃР°РЅРёРё СЂР°СЃРєР»Р°РґР°. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.")
+        await query.edit_message_text(text="? Ошибка при списании расклада. Попробуйте позже.")
         return
     
     new_balance = get_balance(user_id)
     spreads = get_spread_options()
     
     if spread_id not in spreads:
-        await query.edit_message_text(text=f"вќЊ РќРµРІРµСЂРЅС‹Р№ С‚РёРї СЂР°СЃРєР»Р°РґР°: '{spread_id}'")
+        await query.edit_message_text(text=f"? Неверный тип расклада: '{spread_id}'")
         return
     
     spread_info = spreads[spread_id]
@@ -295,22 +295,22 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
     }
     
     intro_text = format_reading_intro(spread_id, user_data['name'])
-    keyboard = [[InlineKeyboardButton("вћЎпёЏ Р”Р°Р»РµРµ", callback_data='reading_step_1')]]
+    keyboard = [[InlineKeyboardButton("?? Далее", callback_data='reading_step_1')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await query.edit_message_text(text=intro_text, reply_markup=reply_markup)
     return READING_INTRO
 
-# ... (РЅР°С‡Р°Р»Рѕ С„Р°Р№Р»Р° Р±РµР· РёР·РјРµРЅРµРЅРёР№) ...
+# ... (начало файла без изменений) ...
 
 async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Р­С‚Р°Рї 2: РџРѕРєР°Р· РєР°СЂС‚ Рё Р·РЅР°С‡РµРЅРёР№ + РєРЅРѕРїРєР° РќР°Р·Р°Рґ"""
+    """Этап 2: Показ карт и значений + кнопка Назад"""
     query = update.callback_query
     await query.answer()
     
     reading_data = context.user_data.get('current_reading', {})
     if not reading_data:
-        await query.edit_message_text(text="вќЊ РћС€РёР±РєР°: РґР°РЅРЅС‹Рµ СЂР°СЃРєР»Р°РґР° СѓС‚РµСЂСЏРЅС‹. РќР°С‡РЅРёС‚Рµ Р·Р°РЅРѕРІРѕ.")
+        await query.edit_message_text(text="? Ошибка: данные расклада утеряны. Начните заново.")
         return
     
     cards_text = format_reading_cards(
@@ -320,10 +320,10 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reading_data['spread_id']
     )
     
-    # вњ… Р”РћР‘РђР’Р›Р•РќРђ РљРќРћРџРљРђ "РќРђР—РђР”"
+    # ? ДОБАВЛЕНА КНОПКА "НАЗАД"
     keyboard = [
-        [InlineKeyboardButton("в¬…пёЏ РќР°Р·Р°Рґ", callback_data='back_to_spread_choice')],
-        [InlineKeyboardButton("вћЎпёЏ Р”Р°Р»РµРµ", callback_data='reading_step_2')]
+        [InlineKeyboardButton("?? Назад", callback_data='back_to_spread_choice')],
+        [InlineKeyboardButton("?? Далее", callback_data='reading_step_2')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -331,13 +331,13 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return READING_CARDS
 
 async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Р­С‚Р°Рї 3: РџРµСЂСЃРѕРЅР°Р»СЊРЅС‹Р№ СЃРѕРІРµС‚ + РїСЂРµРґСѓРїСЂРµР¶РґРµРЅРёРµ + РєРЅРѕРїРєР° РќР°Р·Р°Рґ"""
+    """Этап 3: Персональный совет + предупреждение + кнопка Назад"""
     query = update.callback_query
     await query.answer()
     
     reading_data = context.user_data.get('current_reading', {})
     if not reading_data:
-        await query.edit_message_text(text="вќЊ РћС€РёР±РєР°: РґР°РЅРЅС‹Рµ СЂР°СЃРєР»Р°РґР° СѓС‚РµСЂСЏРЅС‹. РќР°С‡РЅРёС‚Рµ Р·Р°РЅРѕРІРѕ.")
+        await query.edit_message_text(text="? Ошибка: данные расклада утеряны. Начните заново.")
         return
     
     advice_text = format_reading_advice(
@@ -362,13 +362,13 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
         full_reading
     )
     
-    # вњ… Р”РћР‘РђР’Р›Р•РќРђ РљРќРћРџРљРђ "РќРђР—РђР”"
+    # ? ДОБАВЛЕНА КНОПКА "НАЗАД"
     keyboard = [
-        [InlineKeyboardButton("в¬…пёЏ РќР°Р·Р°Рґ Рє РєР°СЂС‚Р°Рј", callback_data='back_to_cards')],
-        [InlineKeyboardButton("рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='save_last_reading')],
-        [InlineKeyboardButton("рџ”„ Р•С‰С‘ РѕРґРёРЅ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
-        [InlineKeyboardButton(f"вљ–пёЏ Р‘Р°Р»Р°РЅСЃ: {reading_data['balance_after']}", callback_data='balance')],
-        [InlineKeyboardButton("рџЏ  Р“Р»Р°РІРЅРѕРµ РјРµРЅСЋ", callback_data='back_to_menu')]
+        [InlineKeyboardButton("?? Назад к картам", callback_data='back_to_cards')],
+        [InlineKeyboardButton("?? Сохранить расклад", callback_data='save_last_reading')],
+        [InlineKeyboardButton("?? Ещё один расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"?? Баланс: {reading_data['balance_after']}", callback_data='balance')],
+        [InlineKeyboardButton("?? Главное меню", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -385,29 +385,29 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     return READING_ADVICE
 
-# вњ… Р”РћР‘РђР’Р›Р•РќР« РћР‘Р РђР‘РћРўР§РРљР РљРќРћРџРћРљ "РќРђР—РђР”"
+# ? ДОБАВЛЕНЫ ОБРАБОТЧИКИ КНОПОК "НАЗАД"
 async def back_to_spread_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Р’РѕР·РІСЂР°С‚ Рє РІС‹Р±РѕСЂСѓ СЂР°СЃРєР»Р°РґР°"""
+    """Возврат к выбору расклада"""
     query = update.callback_query
     await query.answer()
     await choose_spread(update, context)
     return READING_INTRO
 
 async def back_to_cards(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Р’РѕР·РІСЂР°С‚ Рє РєР°СЂС‚Р°Рј (СЌС‚Р°Рї 2)"""
+    """Возврат к картам (этап 2)"""
     query = update.callback_query
     await query.answer()
     await reading_step_1(update, context)
     return READING_CARDS
 
-# ... (РѕСЃС‚Р°Р»СЊРЅРѕР№ РєРѕРґ Р±РµР· РёР·РјРµРЅРµРЅРёР№ РґРѕ С„СѓРЅРєС†РёРё button_handler) ...
+# ... (остальной код без изменений до функции button_handler) ...
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
     
-    # вњ… Р”РћР‘РђР’Р›Р•РќР« РћР‘Р РђР‘РћРўР§РРљР РљРќРћРџРћРљ "РќРђР—РђР”"
+    # ? ДОБАВЛЕНЫ ОБРАБОТЧИКИ КНОПОК "НАЗАД"
     if query.data == 'back_to_spread_choice':
         await back_to_spread_choice(update, context)
         return
@@ -416,52 +416,52 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await back_to_cards(update, context)
         return
     
-    # ... (РѕСЃС‚Р°Р»СЊРЅРѕР№ РєРѕРґ Р±РµР· РёР·РјРµРЅРµРЅРёР№) ...
+    # ... (остальной код без изменений) ...
     
     elif query.data == 'confirm_subscribe':
-        # вњ… РРЎРџР РђР’Р›Р•РќРђ РџР РћР’Р•Р РљРђ РџРћР”РџРРЎРљР: СЃРЅР°С‡Р°Р»Р° РїСЂРѕРІРµСЂСЏРµРј РІ Р±Р°Р·Рµ, РїРѕС‚РѕРј РІ РєР°РЅР°Р»Рµ
+        # ? ИСПРАВЛЕНА ПРОВЕРКА ПОДПИСКИ: сначала проверяем в базе, потом в канале
         subscribed_db = check_subscribed(user_id)
         
         if subscribed_db:
-            message = "вњ… Р’С‹ СѓР¶Рµ РїРѕР»СѓС‡РёР»Рё Р±РѕРЅСѓСЃ Р·Р° РїРѕРґРїРёСЃРєСѓ!"
+            message = "? Вы уже получили бонус за подписку!"
         else:
-            # РџСЂРѕРІРµСЂСЏРµРј СЂРµР°Р»СЊРЅСѓСЋ РїРѕРґРїРёСЃРєСѓ С‡РµСЂРµР· Telegram API
+            # Проверяем реальную подписку через Telegram API
             try:
                 chat_member = await context.bot.get_chat_member(
-                    chat_id="@+5q7VJBPU4_QyMDky",  # ID РІР°С€РµРіРѕ РєР°РЅР°Р»Р°
+                    chat_id="@+5q7VJBPU4_QyMDky",  # ID вашего канала
                     user_id=user_id
                 )
                 if chat_member.status in ["member", "administrator", "creator"]:
                     mark_subscribed(user_id)
-                    message = "рџЋ‰ РЈСЂР°! Р’С‹ РїРѕРґРїРёСЃР°Р»РёСЃСЊ РЅР° РєР°РЅР°Р»!\nвњЁ Р‘РѕРЅСѓСЃ +3 Р±РµСЃРїР»Р°С‚РЅС‹С… СЂР°СЃРєР»Р°РґР° РЅР°С‡РёСЃР»РµРЅ РЅР° РІР°С€ СЃС‡С‘С‚!"
+                    message = "?? Ура! Вы подписались на канал!\n? Бонус +3 бесплатных расклада начислен на ваш счёт!"
                 else:
-                    message = "вќЊ Р’С‹ РЅРµ РїРѕРґРїРёСЃР°РЅС‹ РЅР° РєР°РЅР°Р».\nРџРѕР¶Р°Р»СѓР№СЃС‚Р°, РїРѕРґРїРёС€РёС‚РµСЃСЊ Рё РЅР°Р¶РјРёС‚Рµ РєРЅРѕРїРєСѓ СЃРЅРѕРІР°."
+                    message = "? Вы не подписаны на канал.\nПожалуйста, подпишитесь и нажмите кнопку снова."
             except Exception as e:
-                print(f"РћС€РёР±РєР° РїСЂРѕРІРµСЂРєРё РїРѕРґРїРёСЃРєРё: {e}")
-                message = "вќЊ РќРµ СѓРґР°Р»РѕСЃСЊ РїСЂРѕРІРµСЂРёС‚СЊ РїРѕРґРїРёСЃРєСѓ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ."
+                print(f"Ошибка проверки подписки: {e}")
+                message = "? Не удалось проверить подписку. Попробуйте позже."
         
-        keyboard = [[InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
                 del context.user_data['pending_readings'][user_id]
             else:
-                message = "вљ пёЏ Р’СЃРµ 3 СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹. РЎРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ СЃС‚Р°СЂС‹Р№ СЂР°СЃРєР»Р°Рґ:"
+                message = "?? Все 3 ячейки заняты. Сначала удалите старый расклад:"
                 keyboard = []
                 for slot_num, timestamp in slots.items():
-                    keyboard.append([InlineKeyboardButton(f"вќЊ РЇС‡РµР№РєР° #{slot_num} ({timestamp})", callback_data=f'delete_slot_{slot_num}')])
-                keyboard.append([InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')])
+                    keyboard.append([InlineKeyboardButton(f"? Ячейка #{slot_num} ({timestamp})", callback_data=f'delete_slot_{slot_num}')])
+                keyboard.append([InlineKeyboardButton("?? Меню", callback_data='back_to_menu')])
                 reply_markup = InlineKeyboardMarkup(keyboard)
                 await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
-            await query.edit_message_text(text="вќЊ РќРµС‚ СЂР°СЃРєР»Р°РґР° РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ. РЎРЅР°С‡Р°Р»Р° СЃРґРµР»Р°Р№С‚Рµ СЂР°СЃРєР»Р°Рґ!")
+            await query.edit_message_text(text="? Нет расклада для сохранения. Сначала сделайте расклад!")
     
     elif query.data.startswith('delete_slot_'):
         slot_num = int(query.data.split('_')[2])
         if delete_saved_reading(user_id, slot_num):
-            message = f"вњ… Р Р°СЃРєР»Р°Рґ РёР· СЏС‡РµР№РєРё #{slot_num} СѓРґР°Р»С‘РЅ."
+            message = f"? Расклад из ячейки #{slot_num} удалён."
         else:
-            message = "вќЊ РћС€РёР±РєР° СѓРґР°Р»РµРЅРёСЏ."
-        keyboard = [[InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]]
+            message = "? Ошибка удаления."
+        keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
@@ -470,15 +470,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         occupied = len(slots)
         free = 3 - occupied
         
-        message = f"рџ—„пёЏ РњРћР РЎРћРҐР РђРќРЃРќРќР«Р• Р РђРЎРљР›РђР”Р« рџ—„пёЏ\nрџ“¦ Р”РѕСЃС‚СѓРїРЅРѕ СЏС‡РµРµРє РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ: {occupied}/3\n"
+        message = f"??? МОИ СОХРАНЁННЫЕ РАСКЛАДЫ ???\n?? Доступно ячеек для сохранения: {occupied}/3\n"
         if free > 0:
-            message += f"вњЁ РЎРІРѕР±РѕРґРЅРѕ СЏС‡РµРµРє: {free}\n\n"
+            message += f"? Свободно ячеек: {free}\n\n"
         else:
-            message += "вљ пёЏ Р’СЃРµ СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹. Р§С‚РѕР±С‹ СЃРѕС…СЂР°РЅРёС‚СЊ РЅРѕРІС‹Р№ СЂР°СЃРєР»Р°Рґ, СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ СЃС‚Р°СЂС‹Р№.\n\n"
+            message += "?? Все ячейки заняты. Чтобы сохранить новый расклад, сначала удалите старый.\n\n"
         
         if not slots:
-            message += "РЈ РІР°СЃ РїРѕРєР° РЅРµС‚ СЃРѕС…СЂР°РЅС‘РЅРЅС‹С… СЂР°СЃРєР»Р°РґРѕРІ.\nРЎРґРµР»Р°Р№С‚Рµ СЂР°СЃРєР»Р°Рґ Рё РЅР°Р¶РјРёС‚Рµ В«рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊВ»!"
-            keyboard = [[InlineKeyboardButton("рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')], [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]]
+            message += "У вас пока нет сохранённых раскладов.\nСделайте расклад и нажмите «?? Сохранить»!"
+            keyboard = [[InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')], [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(text=message, reply_markup=reply_markup)
             return
@@ -486,8 +486,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = []
         for slot_num in sorted(slots.keys()):
             timestamp = slots[slot_num]
-            keyboard.append([InlineKeyboardButton(f"рџ“¦ РЇС‡РµР№РєР° #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
-        keyboard.append([InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')])
+            keyboard.append([InlineKeyboardButton(f"?? Ячейка #{slot_num} ({timestamp})", callback_data=f'view_slot_{slot_num}')])
+        keyboard.append([InlineKeyboardButton("?? Меню", callback_data='back_to_menu')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     elif query.data.startswith('view_slot_'):
@@ -495,28 +495,28 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reading = get_saved_reading(user_id, slot_num)
         if reading:
             cards_str, interpretation, timestamp = reading
-            message = f"рџ“¦ Р РђРЎРљР›РђР” РР— РЇР§Р•Р™РљР #{slot_num}\nрџ“… {timestamp[:16]}\n\n{interpretation}"
-            keyboard = [[InlineKeyboardButton("вќЊ РЈРґР°Р»РёС‚СЊ СЌС‚РѕС‚ СЂР°СЃРєР»Р°Рґ", callback_data=f'delete_slot_{slot_num}')], [InlineKeyboardButton("в¬…пёЏ РќР°Р·Р°Рґ Рє СЃРїРёСЃРєСѓ", callback_data='saved_readings')]]
+            message = f"?? РАСКЛАД ИЗ ЯЧЕЙКИ #{slot_num}\n?? {timestamp[:16]}\n\n{interpretation}"
+            keyboard = [[InlineKeyboardButton("? Удалить этот расклад", callback_data=f'delete_slot_{slot_num}')], [InlineKeyboardButton("?? Назад к списку", callback_data='saved_readings')]]
             reply_markup = InlineKeyboardMarkup(keyboard)
             await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
-            await query.edit_message_text(text="вќЊ Р Р°СЃРєР»Р°Рґ РЅРµ РЅР°Р№РґРµРЅ.")
+            await query.edit_message_text(text="? Расклад не найден.")
    
     elif query.data == 'balance':
         balance = get_balance(user_id)
         message = (
-            f"вљ–пёЏ Р’РђРЁ РўР•РљРЈР©РР™ Р‘РђР›РђРќРЎ вљ–пёЏ\n"
-            f"\nрџ”® Р”РѕСЃС‚СѓРїРЅРѕ СЂР°СЃРєР»Р°РґРѕРІ: {balance}\n"
-            f"\nвњЁ РљР°Рє РїРѕР»СѓС‡РёС‚СЊ Р±РѕР»СЊС€Рµ СЂР°СЃРєР»Р°РґРѕРІ:\n"
-            f"вЂў РџСЂРёРіР»Р°СЃРёС‚Рµ РґСЂСѓРіР° вЂ” +1 СЂР°СЃРєР»Р°Рґ рџЋЃ\n"
-            f"вЂў РџРѕРґРїРёС€РёС‚РµСЃСЊ РЅР° РєР°РЅР°Р» вЂ” +3 СЂР°СЃРєР»Р°РґР° рџ“є\n"
-            f"вЂў РљСѓРїРёС‚Рµ РїР°РєРµС‚ СЂР°СЃРєР»Р°РґРѕРІ СЃРѕ СЃРєРёРґРєРѕР№ рџ’і"
+            f"?? ВАШ ТЕКУЩИЙ БАЛАНС ??\n"
+            f"\n?? Доступно раскладов: {balance}\n"
+            f"\n? Как получить больше раскладов:\n"
+            f"• Пригласите друга — +1 расклад ??\n"
+            f"• Подпишитесь на канал — +3 расклада ??\n"
+            f"• Купите пакет раскладов со скидкой ??"
         )
         keyboard = [
-            [InlineKeyboardButton("рџ’і РљСѓРїРёС‚СЊ СЂР°СЃРєР»Р°РґС‹", callback_data='buy_packs')],
-            [InlineKeyboardButton("рџ’« РџСЂРёРіР»Р°СЃРёС‚СЊ РґСЂСѓРіР°", callback_data='referral')],
-            [InlineKeyboardButton("рџ“є РџРѕРґРїРёСЃР°С‚СЊСЃСЏ (+3)", callback_data='subscribe')],
-            [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? Купить расклады", callback_data='buy_packs')],
+            [InlineKeyboardButton("?? Пригласить друга", callback_data='referral')],
+            [InlineKeyboardButton("?? Подписаться (+3)", callback_data='subscribe')],
+            [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -525,50 +525,50 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ref_link = f"https://t.me/cardnotlie_bot?start={user_id}"
         referral_count = get_referral_count(user_id)
         message = (
-            f"рџЋЃ Р Р•Р¤Р•Р РђР›Р¬РќРђРЇ РџР РћР“Р РђРњРњРђ рџЋЃ\n\n"
-            f"вњЁ Р’Р°С€Р° СЂРµС„РµСЂР°Р»СЊРЅР°СЏ СЃСЃС‹Р»РєР°:\n"
+            f"?? РЕФЕРАЛЬНАЯ ПРОГРАММА ??\n\n"
+            f"? Ваша реферальная ссылка:\n"
             f"{ref_link}\n\n"
-            f"рџ“Љ РџСЂРёРіР»Р°С€РµРЅРѕ РґСЂСѓР·РµР№: {referral_count}\n"
-            f"рџ’« Р—Р° РєР°Р¶РґРѕРіРѕ РґСЂСѓРіР° вЂ” +1 Р±РµСЃРїР»Р°С‚РЅС‹Р№ СЂР°СЃРєР»Р°Рґ!\n\n"
-            f"рџ“¤ РџСЂРѕСЃС‚Рѕ РѕС‚РїСЂР°РІСЊС‚Рµ СЃСЃС‹Р»РєСѓ РґСЂСѓР·СЊСЏРј РёР»Рё РІ СЃРѕС†СЃРµС‚Рё!"
+            f"?? Приглашено друзей: {referral_count}\n"
+            f"?? За каждого друга — +1 бесплатный расклад!\n\n"
+            f"?? Просто отправьте ссылку друзьям или в соцсети!"
         )
-        keyboard = [[InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'buy_packs':
         message = (
-            "рџ’і РЎРџРћРЎРћР‘Р« РћРџР›РђРўР« рџ’і\n"
-            "\nР’С‹Р±РµСЂРёС‚Рµ СѓРґРѕР±РЅС‹Р№ СЃРїРѕСЃРѕР±:\n"
-            "\nрџЏ¦ Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р° вЂ” С‚СЂРµР±СѓРµС‚СЃСЏ СЂСѓС‡РЅР°СЏ РїСЂРѕРІРµСЂРєР° СЃРєСЂРёРЅС€РѕС‚Р° вЏі\n"
-            "рџ’Ћ РљСЂРёРїС‚РѕРІР°Р»СЋС‚Р° вЂ” РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ рџ”њ"
+            "?? СПОСОБЫ ОПЛАТЫ ??\n"
+            "\nВыберите удобный способ:\n"
+            "\n?? Банковская карта — требуется ручная проверка скриншота ?\n"
+            "?? Криптовалюта — в разработке ??"
         )
         keyboard = [
-            [InlineKeyboardButton("рџЏ¦ Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р°", callback_data='card_packs')],
-            [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? Банковская карта", callback_data='card_packs')],
+            [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'card_packs':
         message = (
-            "рџ’і РџРђРљР•РўР« Р РђРЎРљР›РђР”РћР’ рџ’і\n"
-            "\nвњЁ Р’С‹Р±РµСЂРёС‚Рµ РїР°РєРµС‚ СЃРѕ СЃРєРёРґРєРѕР№:\n"
-            "\nрџЋґ 1 СЂР°СЃРєР»Р°Рґ вЂ” 100 в‚Ѕ\n"
-            "   РРґРµР°Р»СЊРЅРѕ РґР»СЏ СЂР°Р·РѕРІРѕРіРѕ РіР°РґР°РЅРёСЏ.\n"
-            "\nрџЋґ 3 СЂР°СЃРєР»Р°РґР° вЂ” 285 в‚Ѕ (-5%)\n"
-            "   Р­РєРѕРЅРѕРјРёСЏ 15 в‚Ѕ.\n"
-            "\nрџЋґ 7 СЂР°СЃРєР»Р°РґРѕРІ вЂ” 630 в‚Ѕ (-10%)\n"
-            "   Р­РєРѕРЅРѕРјРёСЏ 70 в‚Ѕ.\n"
-            "\nрџЋґ 13 СЂР°СЃРєР»Р°РґРѕРІ вЂ” 1 105 в‚Ѕ (-15%)\n"
-            "   Р­РєРѕРЅРѕРјРёСЏ 195 в‚Ѕ."
+            "?? ПАКЕТЫ РАСКЛАДОВ ??\n"
+            "\n? Выберите пакет со скидкой:\n"
+            "\n?? 1 расклад — 100 ?\n"
+            "   Идеально для разового гадания.\n"
+            "\n?? 3 расклада — 285 ? (-5%)\n"
+            "   Экономия 15 ?.\n"
+            "\n?? 7 раскладов — 630 ? (-10%)\n"
+            "   Экономия 70 ?.\n"
+            "\n?? 13 раскладов — 1 105 ? (-15%)\n"
+            "   Экономия 195 ?."
         )
         keyboard = [
-            [InlineKeyboardButton("1 СЂР°СЃРєР»Р°Рґ вЂ” 100в‚Ѕ", callback_data='buy_1')],
-            [InlineKeyboardButton("3 СЂР°СЃРєР»Р°РґР° вЂ” 285в‚Ѕ (-5%)", callback_data='buy_3')],
-            [InlineKeyboardButton("7 СЂР°СЃРєР»Р°РґРѕРІ вЂ” 630в‚Ѕ (-10%)", callback_data='buy_7')],
-            [InlineKeyboardButton("13 СЂР°СЃРєР»Р°РґРѕРІ вЂ” 1 105в‚Ѕ (-15%)", callback_data='buy_13')],
-            [InlineKeyboardButton("в¬…пёЏ РќР°Р·Р°Рґ", callback_data='buy_packs')]
+            [InlineKeyboardButton("1 расклад — 100?", callback_data='buy_1')],
+            [InlineKeyboardButton("3 расклада — 285? (-5%)", callback_data='buy_3')],
+            [InlineKeyboardButton("7 раскладов — 630? (-10%)", callback_data='buy_7')],
+            [InlineKeyboardButton("13 раскладов — 1 105? (-15%)", callback_data='buy_13')],
+            [InlineKeyboardButton("?? Назад", callback_data='buy_packs')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -581,59 +581,59 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         discount = discounts[pack_size]
         
         message = (
-            f"рџ’і РћРџР›РђРўРђ РџРђРљР•РўРђ: {pack_size} СЂР°СЃРєР»Р°РґРѕРІ рџ’і\n"
-            f"\nрџ’° РЎС‚РѕРёРјРѕСЃС‚СЊ: {price} в‚Ѕ (СЃРєРёРґРєР° {discount})\n"
-            f"\nрџЏ¦ Р РµРєРІРёР·РёС‚С‹ РґР»СЏ РѕРїР»Р°С‚С‹:\n"
-            f"в–«пёЏ Р‘Р°РЅРє: Р Р°Р№С„С„Р°Р№Р·РµРЅР±Р°РЅРє.\n"
-            f"в–«пёЏ РќРѕРјРµСЂ РєР°СЂС‚С‹: \n"
-            f"в–«пёЏ РџРѕР»СѓС‡Р°С‚РµР»СЊ: РЎРµСЂРіРµР№ Р›.\n"
-            f"в–«пёЏ РЎСѓРјРјР°: {price} в‚Ѕ.\n"
-            f"\nвњ… РџРћРЎР›Р• РћРџР›РђРўР«:\n"
-            f"1. РЎРґРµР»Р°Р№С‚Рµ СЃРєСЂРёРЅС€РѕС‚ РїРµСЂРµРІРѕРґР°.\n"
-            f"2. РќР°РїРёС€РёС‚Рµ РІ РїРѕРґРґРµСЂР¶РєСѓ @jobphone_admin СЃ РїРѕРјРµС‚РєРѕР№ В«РћРџР›РђРўРђВ».\n"
-            f"3. РњС‹ РЅР°С‡РёСЃР»РёРј {pack_size} СЂР°СЃРєР»Р°РґРѕРІ РЅР° РІР°С€ Р±Р°Р»Р°РЅСЃ РІ С‚РµС‡РµРЅРёРµ 10 РјРёРЅСѓС‚! вњЁ\n"
-            f"\nв„№пёЏ РџРѕРґСЂРѕР±РЅРµРµ РѕР± СѓСЃР»РѕРІРёСЏС… РѕРїР»Р°С‚С‹: /terms"
+            f"?? ОПЛАТА ПАКЕТА: {pack_size} раскладов ??\n"
+            f"\n?? Стоимость: {price} ? (скидка {discount})\n"
+            f"\n?? Реквизиты для оплаты:\n"
+            f"?? Банк: Райффайзенбанк.\n"
+            f"?? Номер карты: \n"
+            f"?? Получатель: Сергей Л.\n"
+            f"?? Сумма: {price} ?.\n"
+            f"\n? ПОСЛЕ ОПЛАТЫ:\n"
+            f"1. Сделайте скриншот перевода.\n"
+            f"2. Напишите в поддержку @jobphone_admin с пометкой «ОПЛАТА».\n"
+            f"3. Мы начислим {pack_size} раскладов на ваш баланс в течение 10 минут! ?\n"
+            f"\n?? Подробнее об условиях оплаты: /terms"
         )
         keyboard = [
-            [InlineKeyboardButton("в¬…пёЏ РќР°Р·Р°Рґ Рє РїР°РєРµС‚Р°Рј", callback_data='card_packs')],
-            [InlineKeyboardButton("рџ“„ РЈСЃР»РѕРІРёСЏ РѕРїР»Р°С‚С‹", callback_data='terms')],
-            [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? Назад к пакетам", callback_data='card_packs')],
+            [InlineKeyboardButton("?? Условия оплаты", callback_data='terms')],
+            [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'terms' or query.data == 'terms_button':
         message = (
-            "рџ“„ РЈРЎР›РћР’РРЇ РћРџР›РђРўР« Р РЎРћР“Р›РђРЎРР• рџ“„\n"
-            "\nрџ’« Р’РђР–РќРћ: Р»СЋР±Р°СЏ РѕРїР»Р°С‚Р° РІ СЌС‚РѕРј Р±РѕС‚Рµ СЏРІР»СЏРµС‚СЃСЏ Р”РћР‘Р РћР’РћР›Р¬РќР«Рњ Р”РћРќРђРўРћРњ.\n"
-            "Р Р°СЃРєР»Р°РґС‹ РўР°СЂРѕ РїСЂРµРґРѕСЃС‚Р°РІР»СЏСЋС‚СЃСЏ РІ СЂР°Р·РІР»РµРєР°С‚РµР»СЊРЅС‹С… С†РµР»СЏС….\n"
-            "РРЅС‚РµСЂРїСЂРµС‚Р°С†РёРё РєР°СЂС‚ РЅРµ СЏРІР»СЏСЋС‚СЃСЏ РїСЂРµРґСЃРєР°Р·Р°РЅРёРµРј Р±СѓРґСѓС‰РµРіРѕ Рё РЅРµ Р·Р°РјРµРЅСЏСЋС‚ РєРѕРЅСЃСѓР»СЊС‚Р°С†РёСЋ СЃРїРµС†РёР°Р»РёСЃС‚Р°.\n"
-            "\nвњ… РќР°Р¶РёРјР°СЏ В«РћРїР»Р°С‚РёС‚СЊВ», РІС‹ СЃРѕРіР»Р°С€Р°РµС‚РµСЃСЊ СЃ С‚РµРј, С‡С‚Рѕ:\n"
-            "вЂў РћРїР»Р°С‚Р° РґРѕР±СЂРѕРІРѕР»СЊРЅР°СЏ Рё РЅРµРѕР±СЏР·Р°С‚РµР»СЊРЅР°СЏ.\n"
-            "вЂў Р Р°СЃРєР»Р°РґС‹ РЅРѕСЃСЏС‚ СЂР°Р·РІР»РµРєР°С‚РµР»СЊРЅС‹Р№ С…Р°СЂР°РєС‚РµСЂ.\n"
-            "вЂў Р’С‹ СЃРѕРІРµСЂС€Р°РµС‚Рµ РїР»Р°С‚С‘Р¶ РїРѕ СЃРѕР±СЃС‚РІРµРЅРЅРѕР№ РІРѕР»Рµ Р±РµР· РїСЂРёРЅСѓР¶РґРµРЅРёСЏ.\n"
-            "вЂў Р’РѕР·РІСЂР°С‚ СЃСЂРµРґСЃС‚РІ РЅРµ РїСЂРµРґСѓСЃРјРѕС‚СЂРµРЅ (РґРѕР±СЂРѕРІРѕР»СЊРЅС‹Р№ РґРѕРЅР°С‚).\n"
-            "\nвњЁ РЎРїР°СЃРёР±Рѕ Р·Р° РїРѕРґРґРµСЂР¶РєСѓ РїСЂРѕРµРєС‚Р°! рџ’«"
+            "?? УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ ??\n"
+            "\n?? ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+            "Расклады Таро предоставляются в развлекательных целях.\n"
+            "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n"
+            "\n? Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+            "• Оплата добровольная и необязательная.\n"
+            "• Расклады носят развлекательный характер.\n"
+            "• Вы совершаете платёж по собственной воле без принуждения.\n"
+            "• Возврат средств не предусмотрен (добровольный донат).\n"
+            "\n? Спасибо за поддержку проекта! ??"
         )
-        keyboard = [[InlineKeyboardButton("в¬…пёЏ РќР°Р·Р°Рґ Рє РѕРїР»Р°С‚Рµ", callback_data='buy_packs')]]
+        keyboard = [[InlineKeyboardButton("?? Назад к оплате", callback_data='buy_packs')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'subscribe':
         subscribed = check_subscribed(user_id)
         if subscribed:
-            message = "вњ… Р’С‹ СѓР¶Рµ РїРѕРґРїРёСЃР°РЅС‹ РЅР° РЅР°С€ РєР°РЅР°Р»!\nрџ’« Р‘РѕРЅСѓСЃ +3 СЂР°СЃРєР»Р°РґР° СѓР¶Рµ РЅР°С‡РёСЃР»РµРЅ."
+            message = "? Вы уже подписаны на наш канал!\n?? Бонус +3 расклада уже начислен."
         else:
             message = (
-                "рџ“є РџРћР”РџРРЎРљРђ РќРђ РљРђРќРђР› рџ“є\n"
-                "\nРџРѕРґРїРёС€РёС‚РµСЃСЊ РЅР° РЅР°С€ СЌР·РѕС‚РµСЂРёС‡РµСЃРєРёР№ РєР°РЅР°Р» Рё РїРѕР»СѓС‡РёС‚Рµ +3 Р±РµСЃРїР»Р°С‚РЅС‹С… СЂР°СЃРєР»Р°РґР°!\n"
-                "\nвњЁ РљР°РЅР°Р»: https://t.me/+5q7VJBPU4_QyMDky\n"
-                "\nРџРѕСЃР»Рµ РїРѕРґРїРёСЃРєРё РЅР°Р¶РјРёС‚Рµ РєРЅРѕРїРєСѓ РЅРёР¶Рµ:"
+                "?? ПОДПИСКА НА КАНАЛ ??\n"
+                "\nПодпишитесь на наш эзотерический канал и получите +3 бесплатных расклада!\n"
+                "\n? Канал: https://t.me/+5q7VJBPU4_QyMDky\n"
+                "\nПосле подписки нажмите кнопку ниже:"
             )
         keyboard = [
-            [InlineKeyboardButton("рџ“є РџРµСЂРµР№С‚Рё РІ РєР°РЅР°Р»", url="https://t.me/+5q7VJBPU4_QyMDky")],
-            [InlineKeyboardButton("вњ… РЇ РїРѕРґРїРёСЃР°Р»СЃСЏ (+3 СЂР°СЃРєР»Р°РґР°)", callback_data='confirm_subscribe')],
-            [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? Перейти в канал", url="https://t.me/+5q7VJBPU4_QyMDky")],
+            [InlineKeyboardButton("? Я подписался (+3 расклада)", callback_data='confirm_subscribe')],
+            [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -641,55 +641,55 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == 'confirm_subscribe':
         subscribed = check_subscribed(user_id)
         if subscribed:
-            message = "вњ… Р’С‹ СѓР¶Рµ РїРѕР»СѓС‡РёР»Рё Р±РѕРЅСѓСЃ Р·Р° РїРѕРґРїРёСЃРєСѓ!"
+            message = "? Вы уже получили бонус за подписку!"
         else:
             mark_subscribed(user_id)
-            message = "рџЋ‰ РЈСЂР°! Р’С‹ РїРѕРґРїРёСЃР°Р»РёСЃСЊ РЅР° РєР°РЅР°Р»!\nвњЁ Р‘РѕРЅСѓСЃ +3 Р±РµСЃРїР»Р°С‚РЅС‹С… СЂР°СЃРєР»Р°РґР° РЅР°С‡РёСЃР»РµРЅ РЅР° РІР°С€ СЃС‡С‘С‚!"
-        keyboard = [[InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]]
+            message = "?? Ура! Вы подписались на канал!\n? Бонус +3 бесплатных расклада начислен на ваш счёт!"
+        keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'help':
         message = (
-            "вќ“ РџРћРњРћР©Р¬ вќ“\n"
-            "\nвњЁ РљРђРљ РџРћР›Р¬Р—РћР’РђРўР¬РЎРЇ Р‘РћРўРћРњ:\n"
-            "вЂў рџЊ… РљР°СЂС‚Р° РґРЅСЏ вЂ” Р±РµСЃРїР»Р°С‚РЅРѕРµ РіР°РґР°РЅРёРµ РЅР° СЃРµРіРѕРґРЅСЏ (1 СЂР°Р· РІ РґРµРЅСЊ)\n"
-            "вЂў рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ вЂ” РїРѕРґСЂРѕР±РЅС‹Р№ СЂР°СЃРєР»Р°Рґ РёР· 3+ РєР°СЂС‚ (СЃРїРёСЃС‹РІР°РµС‚СЃСЏ СЃ Р±Р°Р»Р°РЅСЃР°)\n"
-            "вЂў рџ’ѕ РЎРѕС…СЂР°РЅРёС‚СЊ СЂР°СЃРєР»Р°Рґ вЂ” СЃРѕС…СЂР°РЅРёС‚Рµ СЂРµР·СѓР»СЊС‚Р°С‚ РІ РѕРґРЅСѓ РёР· 3 СЏС‡РµРµРє\n"
-            "\nрџ—„пёЏ РЎРћРҐР РђРќР•РќРР• Р РђРЎРљР›РђР”РћР’:\n"
-            "вЂў РЈ РІР°СЃ РµСЃС‚СЊ 3 СЏС‡РµР№РєРё РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ СЂР°СЃРєР»Р°РґРѕРІ.\n"
-            "вЂў Р Р°СЃРєР»Р°РґС‹ РќР• СЃРѕС…СЂР°РЅСЏСЋС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё вЂ” С‚РѕР»СЊРєРѕ РїРѕ РІР°С€РµРјСѓ РІС‹Р±РѕСЂСѓ.\n"
-            "вЂў Р•СЃР»Рё РІСЃРµ СЏС‡РµР№РєРё Р·Р°РЅСЏС‚С‹ вЂ” СЃРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ СЃС‚Р°СЂС‹Р№ СЂР°СЃРєР»Р°Рґ.\n"
-            "\nвљ–пёЏ Р‘РђР›РђРќРЎ:\n"
-            "вЂў РџСЂРё СЂРµРіРёСЃС‚СЂР°С†РёРё: 1 Р±РµСЃРїР»Р°С‚РЅС‹Р№ СЂР°СЃРєР»Р°Рґ.\n"
-            "вЂў рџЊ… РљР°СЂС‚Р° РґРЅСЏ вЂ” РІСЃРµРіРґР° Р±РµСЃРїР»Р°С‚РЅРѕ, 1 СЂР°Р· РІ РґРµРЅСЊ.\n"
-            "вЂў Р—Р° РґСЂСѓРіР°: +1 СЂР°СЃРєР»Р°Рґ.\n"
-            "вЂў Р—Р° РїРѕРґРїРёСЃРєСѓ: +3 СЂР°СЃРєР»Р°РґР°.\n"
-            "вЂў РџРѕРєСѓРїРєР° РїР°РєРµС‚РѕРІ СЃРѕ СЃРєРёРґРєРѕР№ РґРѕ 15%.\n"
-            "\nрџ’і РћРџР›РђРўРђ:\n"
-            "вЂў Р‘Р°РЅРєРѕРІСЃРєР°СЏ РєР°СЂС‚Р° вЂ” СЂСѓС‡РЅР°СЏ РїСЂРѕРІРµСЂРєР° СЃРєСЂРёРЅС€РѕС‚Р° вЏі\n"
-            "вЂў РљСЂРёРїС‚РѕРІР°Р»СЋС‚Р° вЂ” РІ СЂР°Р·СЂР°Р±РѕС‚РєРµ рџ”њ\n"
-            "вЂў РџРѕРґСЂРѕР±РЅРµРµ РѕР± СѓСЃР»РѕРІРёСЏС…: /terms"
+            "? ПОМОЩЬ ?\n"
+            "\n? КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
+            "• ?? Карта дня — бесплатное гадание на сегодня (1 раз в день)\n"
+            "• ?? Сделать расклад — подробный расклад из 3+ карт (списывается с баланса)\n"
+            "• ?? Сохранить расклад — сохраните результат в одну из 3 ячеек\n"
+            "\n??? СОХРАНЕНИЕ РАСКЛАДОВ:\n"
+            "• У вас есть 3 ячейки для сохранения раскладов.\n"
+            "• Расклады НЕ сохраняются автоматически — только по вашему выбору.\n"
+            "• Если все ячейки заняты — сначала удалите старый расклад.\n"
+            "\n?? БАЛАНС:\n"
+            "• При регистрации: 1 бесплатный расклад.\n"
+            "• ?? Карта дня — всегда бесплатно, 1 раз в день.\n"
+            "• За друга: +1 расклад.\n"
+            "• За подписку: +3 расклада.\n"
+            "• Покупка пакетов со скидкой до 15%.\n"
+            "\n?? ОПЛАТА:\n"
+            "• Банковская карта — ручная проверка скриншота ?\n"
+            "• Криптовалюта — в разработке ??\n"
+            "• Подробнее об условиях: /terms"
         )
-        keyboard = [[InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]]
+        keyboard = [[InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
     
     elif query.data == 'back_to_menu':
         user_data = get_user_data(user_id)
         if not user_data or not user_data.get('name'):
-            await query.message.reply_text("РќР°РїРёС€РёС‚Рµ СЃРІРѕС‘ РёРјСЏ:")
+            await query.message.reply_text("Напишите своё имя:")
             return
         
         balance = get_balance(user_id)
-        message = f"рџ”® Р”РћР‘Р Рћ РџРћР–РђР›РћР’РђРўР¬ Р’ РњРР  РўРђР Рћ! рџ”®\nвњЁ {user_data['name']}, РІР°С€ Р±Р°Р»Р°РЅСЃ: {balance} СЂР°СЃРєР»Р°РґРѕРІ"
+        message = f"?? ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! ??\n? {user_data['name']}, ваш баланс: {balance} раскладов"
         keyboard = [
-            [InlineKeyboardButton("рџЊ… РљР°СЂС‚Р° РґРЅСЏ (Р±РµСЃРїР»Р°С‚РЅРѕ)", callback_data='daily_card')],
-            [InlineKeyboardButton("рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
-            [InlineKeyboardButton(f"вљ–пёЏ Р‘Р°Р»Р°РЅСЃ: {balance}", callback_data='balance')],
-            [InlineKeyboardButton("рџ“є РџРѕРґРїРёСЃРєР° (+3)", callback_data='subscribe')],
-            [InlineKeyboardButton("рџ—„пёЏ РњРѕРё СЂР°СЃРєР»Р°РґС‹", callback_data='saved_readings')],
-            [InlineKeyboardButton("вќ“ РџРѕРјРѕС‰СЊ", callback_data='help')]
+            [InlineKeyboardButton("?? Карта дня (бесплатно)", callback_data='daily_card')],
+            [InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')],
+            [InlineKeyboardButton(f"?? Баланс: {balance}", callback_data='balance')],
+            [InlineKeyboardButton("?? Подписка (+3)", callback_data='subscribe')],
+            [InlineKeyboardButton("??? Мои расклады", callback_data='saved_readings')],
+            [InlineKeyboardButton("? Помощь", callback_data='help')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -701,19 +701,19 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name'):
-        await query.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
+        await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
     
     balance = get_balance(user_id)
     if balance <= 0:
         keyboard = [
-            [InlineKeyboardButton("рџ’і РљСѓРїРёС‚СЊ СЂР°СЃРєР»Р°РґС‹", callback_data='buy_packs')],
-            [InlineKeyboardButton("рџ“є РџРѕРґРїРёСЃР°С‚СЊСЃСЏ (+3)", callback_data='subscribe')],
-            [InlineKeyboardButton("в¬…пёЏ РњРµРЅСЋ", callback_data='back_to_menu')]
+            [InlineKeyboardButton("?? Купить расклады", callback_data='buy_packs')],
+            [InlineKeyboardButton("?? Подписаться (+3)", callback_data='subscribe')],
+            [InlineKeyboardButton("?? Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(
-            text="рџ’« РЈ РІР°СЃ Р·Р°РєРѕРЅС‡РёР»РёСЃСЊ СЂР°СЃРєР»Р°РґС‹.\nрџ’° РџРѕРїРѕР»РЅРёС‚Рµ Р±Р°Р»Р°РЅСЃ РёР»Рё РїРѕР»СѓС‡РёС‚Рµ Р±РѕРЅСѓСЃС‹!",
+            text="?? У вас закончились расклады.\n?? Пополните баланс или получите бонусы!",
             reply_markup=reply_markup
         )
         return
@@ -721,13 +721,13 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     spreads = get_spread_options()
     spreads.pop('daily', None)
     
-    message = "рџЋґ Р’Р«Р‘Р•Р РРўР• РўРРџ Р РђРЎРљР›РђР”Рђ рџЋґ\n\n"
+    message = "?? ВЫБЕРИТЕ ТИП РАСКЛАДА ??\n\n"
     keyboard = []
     
     for spread_id, spread_info in spreads.items():
         keyboard.append([InlineKeyboardButton(spread_info['name'], callback_data=f'spread_{spread_id}')])
     
-    keyboard.append([InlineKeyboardButton("в¬…пёЏ РќР°Р·Р°Рґ", callback_data='back_to_menu')])
+    keyboard.append([InlineKeyboardButton("?? Назад", callback_data='back_to_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text=message, reply_markup=reply_markup)
 
@@ -744,37 +744,37 @@ start_handler = ConversationHandler(
     allow_reentry=True
 )
 
-# === РќРћР’Р«Р• Р“Р›РћР‘РђР›Р¬РќР«Р• РћР‘Р РђР‘РћРўР§РРљР Р”Р›РЇ РљРќРћРџРћРљ "Р”РђР›Р•Р•" ===
+# === НОВЫЕ ГЛОБАЛЬНЫЕ ОБРАБОТЧИКИ ДЛЯ КНОПОК "ДАЛЕЕ" ===
 
 async def reading_step_1_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ РѕР±СЂР°Р±РѕС‚С‡РёРє РґР»СЏ РєРЅРѕРїРєРё 'Р”Р°Р»РµРµ' (СЌС‚Р°Рї 1 в†’ СЌС‚Р°Рї 2)"""
+    """Глобальный обработчик для кнопки 'Далее' (этап 1 > этап 2)"""
     return await reading_step_1(update, context)
 
 async def reading_step_2_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ РѕР±СЂР°Р±РѕС‚С‡РёРє РґР»СЏ РєРЅРѕРїРєРё 'Р”Р°Р»РµРµ' (СЌС‚Р°Рї 2 в†’ СЌС‚Р°Рї 3)"""
+    """Глобальный обработчик для кнопки 'Далее' (этап 2 > этап 3)"""
     return await reading_step_2(update, context)
 
-# === РљРћРњРђРќР”Рђ /menu ===
+# === КОМАНДА /menu ===
 
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """РљРѕРјР°РЅРґР° /menu - РІРѕР·РІСЂР°С‰Р°РµС‚ РІ РіР»Р°РІРЅРѕРµ РјРµРЅСЋ"""
+    """Команда /menu - возвращает в главное меню"""
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
     
     if not user_data or not user_data.get('name'):
-        await update.message.reply_text("РЎРЅР°С‡Р°Р»Р° СѓРєР°Р¶РёС‚Рµ РёРјСЏ Рё РґР°С‚Сѓ СЂРѕР¶РґРµРЅРёСЏ С‡РµСЂРµР· /start")
+        await update.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
     
     balance = get_balance(user_id)
-    message = f"рџ”® Р”РћР‘Р Рћ РџРћР–РђР›РћР’РђРўР¬ Р’ РњРР  РўРђР Рћ! рџ”®\nвњЁ {user_data['name']}, РІР°С€ Р±Р°Р»Р°РЅСЃ: {balance} СЂР°СЃРєР»Р°РґРѕРІ"
+    message = f"?? ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! ??\n? {user_data['name']}, ваш баланс: {balance} раскладов"
     
     keyboard = [
-        [InlineKeyboardButton("рџЊ… РљР°СЂС‚Р° РґРЅСЏ (Р±РµСЃРїР»Р°С‚РЅРѕ)", callback_data='daily_card')],
-        [InlineKeyboardButton("рџЋґ РЎРґРµР»Р°С‚СЊ СЂР°СЃРєР»Р°Рґ", callback_data='do_tarot')],
-        [InlineKeyboardButton(f"вљ–пёЏ Р‘Р°Р»Р°РЅСЃ: {balance}", callback_data='balance')],
-        [InlineKeyboardButton("рџ“є РџРѕРґРїРёСЃРєР° (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("рџ—„пёЏ РњРѕРё СЂР°СЃРєР»Р°РґС‹", callback_data='saved_readings')],
-        [InlineKeyboardButton("вќ“ РџРѕРјРѕС‰СЊ", callback_data='help')]
+        [InlineKeyboardButton("?? Карта дня (бесплатно)", callback_data='daily_card')],
+        [InlineKeyboardButton("?? Сделать расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton(f"?? Баланс: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("?? Подписка (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("??? Мои расклады", callback_data='saved_readings')],
+        [InlineKeyboardButton("? Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
