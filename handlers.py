@@ -309,7 +309,7 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     reading_data = context.user_data.get('current_reading', {})
-    if not reading_
+    if not reading_data:
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
     
@@ -336,7 +336,7 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     
     reading_data = context.user_data.get('current_reading', {})
-    if not reading_
+    if not reading_data:
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
     
@@ -345,7 +345,7 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reading_data['spread_id']
     )
     
-    if 'pending_readings' not in context.user_
+    if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
     
     full_reading = (
