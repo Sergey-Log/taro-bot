@@ -41,7 +41,6 @@ def main():
     
     application = Application.builder().token(TOKEN).post_init(post_init).build()
 
-    # Регистрация ВСЕХ обработчиков
     application.add_handler(start_handler)
     application.add_handler(CommandHandler("menu", menu_command))
     application.add_handler(CommandHandler("daily", daily_command))
@@ -51,7 +50,6 @@ def main():
     application.add_handler(CommandHandler("terms", terms_command))
     application.add_handler(CommandHandler("account", account_command_handler))
 
-    # Глобальные обработчики для кнопок "Далее"
     application.add_handler(CallbackQueryHandler(reading_step_1_handler, pattern='^reading_step_1$'))
     application.add_handler(CallbackQueryHandler(reading_step_2_handler, pattern='^reading_step_2$'))
     application.add_handler(CallbackQueryHandler(button_handler))

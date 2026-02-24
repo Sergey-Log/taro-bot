@@ -1,4 +1,5 @@
 import re
+import os
 import requests
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -11,7 +12,7 @@ from utils import (
     get_spread_options, get_referral_count, add_referral, mark_subscribed,
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice,
-    increment_reading_count, get_reading_count
+    get_card_image_path, increment_reading_count, get_reading_count
 )
 
 ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE, CHANGING_NAME = range(6)
@@ -215,9 +216,10 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         increment_reading_count(user_id)
         
         # Отправляем с изображением карты
-        image_url = interpretation.get('image', None)
-        if image_url:
-            await update.message.reply_photo(photo=image_url, caption=reading)
+        image_path = get_card_image_path(card_name)
+        if image_path and os.path.exists(image_path):
+            with open(image_path, 'rb') as photo:
+                await update.message.reply_photo(photo=photo, caption=reading)
         else:
             await update.message.reply_text(text=reading)
         
@@ -414,7 +416,6 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
         full_reading
     )
 
-    # Увеличиваем счётчик раскладов
     increment_reading_count(query.from_user.id)
 
     keyboard = [
@@ -427,15 +428,16 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     # Отправляем совет с изображением первой карты если есть
-    first_card_image = reading_data['cards'][0][1].get('image', None) if reading_data['cards'] else None
+    first_card_image = get_card_image_path(reading_data['cards'][0][0]) if reading_data['cards'] else None
     
-    if first_card_image:
-        await context.bot.send_photo(
-            chat_id=query.message.chat_id,
-            photo=first_card_image,
-            caption=advice_text,
-            reply_markup=reply_markup
-        )
+    if first_card_image and os.path.exists(first_card_image):
+        with open(first_card_image, 'rb') as photo:
+            await context.bot.send_photo(
+                chat_id=query.message.chat_id,
+                photo=photo,
+                caption=advice_text,
+                reply_markup=reply_markup
+            )
     else:
         await context.bot.send_message(
             chat_id=query.message.chat_id,
@@ -488,13 +490,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             save_daily_card(user_id, card_name, reading)
             increment_reading_count(user_id)
             
-            image_url = interpretation.get('image', None)
-            if image_url:
-                await context.bot.send_photo(
-                    chat_id=query.message.chat_id,
-                    photo=image_url,
-                    caption=reading
-                )
+            image_path = get_card_image_path(card_name)
+            if image_path and os.path.exists(image_path):
+                with open(image_path, 'rb') as photo:
+                    await context.bot.send_photo(
+                        chat_id=query.message.chat_id,
+                        photo=photo,
+                        caption=reading
+                    )
             else:
                 await context.bot.send_message(
                     chat_id=query.message.chat_id,
@@ -761,8 +764,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=message, reply_markup=reply_markup)
 
     elif query.data == 'subscribe':
-        # Исправленная проверка подписки
-        channel_username = "@cardnotlie_bot"  # Замените на ваш реальный канал
+        channel_username = "@tarot_channel_mystic"
         subscribed_db = check_subscribed(user_id)
         
         if subscribed_db:
@@ -789,8 +791,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = "✅ Вы уже получили бонус за подписку!"
         else:
             try:
-                # Исправленная проверка подписки через Telegram API
-                channel_username = "tarot_channel_mystic"  # Без @
+                channel_username = "tarot_channel_mystic"
                 chat_member = await context.bot.get_chat_member(
                     chat_id=f"@{channel_username}",
                     user_id=user_id
