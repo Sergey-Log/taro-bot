@@ -730,3 +730,27 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
     result += "🌙 Таро — инструмент самопознания 💫\n"
 
     return result
+
+
+# ============================================================================
+# 🖼️ ФУНКЦИИ ДЛЯ ИЗОБРАЖЕНИЙ КАРТ
+# ============================================================================
+
+def get_card_image_path(card_name):
+    """Получить путь к изображению карты"""
+    CARD_IMAGE_FILES = {
+        "Шут": "00_fool.jpg", "Маг": "01_magician.jpg", "Жрица": "02_high_priestess.jpg",
+        "Императрица": "03_empress.jpg", "Император": "04_emperor.jpg", "Жрец": "05_hierophant.jpg",
+        "Влюблённые": "06_lovers.jpg", "Колесница": "07_chariot.jpg", "Сила": "08_strength.jpg",
+        "Отшельник": "09_hermit.jpg", "Колесо Фортуны": "10_wheel_of_fortune.jpg",
+        "Справедливость": "11_justice.jpg", "Повешенный": "12_hanged_man.jpg", "Смерть": "13_death.jpg",
+        "Умеренность": "14_temperance.jpg", "Дьявол": "15_devil.jpg", "Башня": "16_tower.jpg",
+        "Звезда": "17_star.jpg", "Луна": "18_moon.jpg", "Солнце": "19_sun.jpg",
+        "Суд": "20_judgment.jpg", "Мир": "21_world.jpg"
+    }
+    filename = CARD_IMAGE_FILES.get(card_name)
+    if filename:
+        path = os.path.join("tarot_cards", filename)
+        if os.path.exists(path):
+            return path
+    return None
