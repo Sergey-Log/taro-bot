@@ -1,8 +1,8 @@
 import re
 from datetime import datetime
+import os
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, CallbackQueryHandler, filters
-from flask import request
 from utils import (
     add_user, get_balance, decrease_balance, get_saved_slots, save_reading,
     get_saved_reading, delete_saved_reading, create_payment, complete_payment,
@@ -10,7 +10,7 @@ from utils import (
     get_spread_options, get_referral_count, add_referral, mark_subscribed,
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice,
-    get_card_image_path  # ← ДОБАВЛЕНО
+    get_card_image_path, increment_reading_count, get_reading_count
 )
 
 ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE, CHANGING_NAME = range(6)
@@ -213,7 +213,13 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_daily_card(user_id, card_name, reading)
         increment_reading_count(user_id)
         
-        await update.message.reply_text(text=reading)
+        image_path = get_card_image_path(card_name)
+        if image_path and os.path.exists(image_path):
+            with open(image_path, 'rb') as photo:
+                await update.message.reply_photo(photo=photo, caption=reading)
+        else:
+            await update.message.reply_text(text=reading)
+        
         await update.message.reply_text(
             text="🌅 Карта дня получена! Возвращайтесь завтра за новой картой.",
             reply_markup=InlineKeyboardMarkup([
@@ -281,7 +287,6 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
 async def account_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """👤 Обработчик кнопки Аккаунт"""
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name'):
@@ -458,48 +463,48 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if query.data == 'daily_card':
-    user_data = get_user_data(user_id)
-    if not user_data or not user_data.get('name'):
-        await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
-        return
-    
-    if can_get_daily_card(user_id):
-        card = get_random_cards(1)[0]
-        card_name, interpretation = card
-        reading = format_daily_card(card_name, interpretation, user_data['name'])
-        save_daily_card(user_id, card_name, reading)
+        user_data = get_user_data(user_id)
+        if not user_data or not user_data.get('name'):
+            await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
+            return
         
-        # 🔧 Отправляем с изображением если есть
-        image_path = get_card_image_path(card_name)
-        if image_path and os.path.exists(image_path):
-            with open(image_path, 'rb') as photo:
-                await context.bot.send_photo(
+        if can_get_daily_card(user_id):
+            card = get_random_cards(1)[0]
+            card_name, interpretation = card
+            reading = format_daily_card(card_name, interpretation, user_data['name'])
+            save_daily_card(user_id, card_name, reading)
+            increment_reading_count(user_id)
+            
+            image_path = get_card_image_path(card_name)
+            if image_path and os.path.exists(image_path):
+                with open(image_path, 'rb') as photo:
+                    await context.bot.send_photo(
+                        chat_id=query.message.chat_id,
+                        photo=photo,
+                        caption=reading
+                    )
+            else:
+                await context.bot.send_message(
                     chat_id=query.message.chat_id,
-                    photo=photo,
-                    caption=reading
+                    text=reading
                 )
-        else:
+            
             await context.bot.send_message(
                 chat_id=query.message.chat_id,
-                text=reading
+                text="🌅 Карта дня получена! Возвращайтесь завтра за новой картой.\n\n💫 Хотите сделать подробный расклад? Нажмите «🎴 Сделать расклад»",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
+                    [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+                ])
             )
-        
-        await context.bot.send_message(
-            chat_id=query.message.chat_id,
-            text="🌅 Карта дня получена! Возвращайтесь завтра за новой картой.\n\n💫 Хотите сделать подробный расклад? Нажмите «🎴 Сделать расклад»",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
-                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
-            ])
-        )
-    else:
-        await query.edit_message_text(
-            text="🌅 Вы уже получили карту дня сегодня!\nВозвращайтесь завтра за новой картой ☀️",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
-            ])
-        )
-    return
+        else:
+            await query.edit_message_text(
+                text="🌅 Вы уже получили карту дня сегодня!\nВозвращайтесь завтра за новой картой ☀️",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+                ])
+            )
+        return
 
     if query.data.startswith('spread_'):
         await process_spread_selection(update, context)
@@ -769,9 +774,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = "✅ Вы уже получили бонус за подписку!"
         else:
             try:
-                # 🔧 Ваш Chat ID канала
                 channel_id = -1003865254581
-                
                 chat_member = await context.bot.get_chat_member(
                     chat_id=channel_id,
                     user_id=user_id
@@ -879,7 +882,7 @@ start_handler = ConversationHandler(
         READING_INTRO: [CallbackQueryHandler(reading_step_1, pattern='^reading_step_1$')],
         READING_CARDS: [CallbackQueryHandler(reading_step_2, pattern='^reading_step_2$')],
         READING_ADVICE: [CallbackQueryHandler(button_handler)],
-        CHANGING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, change_name)]  # ← ДОБАВЛЕНО
+        CHANGING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, change_name)]
     },
     fallbacks=[CommandHandler("start", _start)],
     allow_reentry=True
