@@ -793,7 +793,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             try:
                 # 🔧 ВСТАВЬТЕ СЮДА ВАШ CHAT_ID (получите через get_channel_id.py)
-                channel_id = -1001234567890  # ← ЗАМЕНИТЬ НА РЕАЛЬНЫЙ!
+                channel_id = -1003865254581
                 
                 chat_member = await context.bot.get_chat_member(
                     chat_id=channel_id,
