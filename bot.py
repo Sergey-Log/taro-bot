@@ -7,7 +7,7 @@ import threading
 from handlers import (
     start_handler, button_handler, history_command, terms_command,
     daily_command, balance_command, help_command, menu_command,
-    reading_step_1_handler, reading_step_2_handler, account_command_handler
+    reading_step_1_handler, reading_step_2_handler
 )
 from utils import init_db
 
@@ -17,7 +17,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v6.0"
+    return "✅ v5.14"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -30,6 +30,8 @@ async def post_init(application):
         BotCommand("daily", "🌅 Карта дня (бесплатно)"),
         BotCommand("balance", "⚖️ Проверить баланс"),
         BotCommand("account", "👤 Мой аккаунт"),
+        BotCommand("history", "🗄️ Мои расклады"),
+        BotCommand("terms", "📄 Условия оплаты"),
         BotCommand("help", "❓ Помощь и инструкции")
     ])
 
@@ -41,21 +43,27 @@ def main():
     
     application = Application.builder().token(TOKEN).post_init(post_init).build()
 
+    # 1. КонversationHandler (старт, имя, дата рождения)
     application.add_handler(start_handler)
+    
+    # 2. Команды
     application.add_handler(CommandHandler("menu", menu_command))
     application.add_handler(CommandHandler("daily", daily_command))
     application.add_handler(CommandHandler("balance", balance_command))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("terms", terms_command))
-    application.add_handler(CommandHandler("account", account_command_handler))
-
+    
+    # 3. Обработчики кнопок расклада (с приоритетом)
     application.add_handler(CallbackQueryHandler(reading_step_1_handler, pattern='^reading_step_1$'))
     application.add_handler(CallbackQueryHandler(reading_step_2_handler, pattern='^reading_step_2$'))
+    
+    # 4. Глобальный обработчик ВСЕХ остальных кнопок (должен быть ПОСЛЕДНИМ)
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    print("✅ Бот запущен v6.0 (Аккаунт + Картинки + Исправлена подписка)")
-    application.run_polling()
+    print("✅ Бот запущен v5.14")
+    print("📋 Доступные команды: /start, /menu, /daily, /balance, /account, /history, /help")
+    application.run_polling(allowed_updates=['message', 'callback_query'])
 
 def run_flask():
     port = int(os.environ.get('PORT', 10000))
