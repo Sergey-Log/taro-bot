@@ -73,6 +73,7 @@ def init_db():
         )
     ''')
 
+    # 🔧 НОВАЯ ТАБЛИЦА для статистики раскладов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS reading_stats (
             user_id INTEGER PRIMARY KEY,
@@ -272,6 +273,10 @@ def get_daily_card(user_id):
     conn.close()
     return result if result else None
 
+# ============================================================================
+# 🔧 НОВЫЕ ФУНКЦИИ (добавлены в конец файла)
+# ============================================================================
+
 def increment_reading_count(user_id):
     """Увеличить счётчик раскладов пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
@@ -295,43 +300,42 @@ def get_reading_count(user_id):
     conn.close()
     return result[0] if result else 0
 
-# Путь к папке с изображениями карт
-CARD_IMAGES_FOLDER = "tarot_cards"
-
-# Маппинг названий карт на имена файлов
-CARD_IMAGE_FILES = {
-    "Шут": "00_fool.jpg",
-    "Маг": "01_magician.jpg",
-    "Жрица": "02_high_priestess.jpg",
-    "Императрица": "03_empress.jpg",
-    "Император": "04_emperor.jpg",
-    "Жрец": "05_hierophant.jpg",
-    "Влюблённые": "06_lovers.jpg",
-    "Колесница": "07_chariot.jpg",
-    "Сила": "08_strength.jpg",
-    "Отшельник": "09_hermit.jpg",
-    "Колесо Фортуны": "10_wheel_of_fortune.jpg",
-    "Справедливость": "11_justice.jpg",
-    "Повешенный": "12_hanged_man.jpg",
-    "Смерть": "13_death.jpg",
-    "Умеренность": "14_temperance.jpg",
-    "Дьявол": "15_devil.jpg",
-    "Башня": "16_tower.jpg",
-    "Звезда": "17_star.jpg",
-    "Луна": "18_moon.jpg",
-    "Солнце": "19_sun.jpg",
-    "Суд": "20_judgment.jpg",
-    "Мир": "21_world.jpg"
-}
-
 def get_card_image_path(card_name):
     """Получить путь к изображению карты"""
+    CARD_IMAGE_FILES = {
+        "Шут": "00_fool.jpg",
+        "Маг": "01_magician.jpg",
+        "Жрица": "02_high_priestess.jpg",
+        "Императрица": "03_empress.jpg",
+        "Император": "04_emperor.jpg",
+        "Жрец": "05_hierophant.jpg",
+        "Влюблённые": "06_lovers.jpg",
+        "Колесница": "07_chariot.jpg",
+        "Сила": "08_strength.jpg",
+        "Отшельник": "09_hermit.jpg",
+        "Колесо Фортуны": "10_wheel_of_fortune.jpg",
+        "Справедливость": "11_justice.jpg",
+        "Повешенный": "12_hanged_man.jpg",
+        "Смерть": "13_death.jpg",
+        "Умеренность": "14_temperance.jpg",
+        "Дьявол": "15_devil.jpg",
+        "Башня": "16_tower.jpg",
+        "Звезда": "17_star.jpg",
+        "Луна": "18_moon.jpg",
+        "Солнце": "19_sun.jpg",
+        "Суд": "20_judgment.jpg",
+        "Мир": "21_world.jpg"
+    }
     filename = CARD_IMAGE_FILES.get(card_name)
     if filename:
-        path = os.path.join(CARD_IMAGES_FOLDER, filename)
+        path = os.path.join("tarot_cards", filename)
         if os.path.exists(path):
             return path
     return None
+
+# ============================================================================
+# СТАРЫЕ ФУНКЦИИ (без изменений)
+# ============================================================================
 
 MAJOR_ARCANA = {
     "Шут": {

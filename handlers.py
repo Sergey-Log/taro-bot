@@ -12,7 +12,7 @@ from utils import (
     get_spread_options, get_referral_count, add_referral, mark_subscribed,
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice,
-    get_card_image_path, increment_reading_count, get_reading_count
+    get_card_image_path, increment_reading_count, get_reading_count  # ← ДОБАВЛЕНО
 )
 
 ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE, CHANGING_NAME = range(6)
@@ -764,7 +764,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=message, reply_markup=reply_markup)
 
     elif query.data == 'subscribe':
-        channel_username = "@tarot_channel_mystic"
+        # Проверяем по базе данных (быстро)
         subscribed_db = check_subscribed(user_id)
         
         if subscribed_db:
@@ -773,29 +773,33 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = (
                 "📺 ПОДПИСКА НА КАНАЛ 📺\n"
                 "\nПодпишитесь на наш эзотерический канал и получите +3 бесплатных расклада!\n"
-                "\n✨ Канал: https://t.me/tarot_channel_mystic\n"
+                "\n✨ Канал: https://t.me/+5q7VJBPU4_QyMDky\n"
                 "\nПосле подписки нажмите кнопку ниже: "
             )
         keyboard = [
-            [InlineKeyboardButton("📺 Перейти в канал", url="https://t.me/tarot_channel_mystic")],
+            [InlineKeyboardButton("📺 Перейти в канал", url="https://t.me/+5q7VJBPU4_QyMDky")],
             [InlineKeyboardButton("✅ Я подписался (+3 расклада)", callback_data='confirm_subscribe')],
             [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
 
-    elif query.data == 'confirm_subscribe':
+        elif query.data == 'confirm_subscribe':
+        # Сначала проверяем по БД
         subscribed_db = check_subscribed(user_id)
         
         if subscribed_db:
             message = "✅ Вы уже получили бонус за подписку!"
         else:
             try:
-                channel_username = "tarot_channel_mystic"
+                # 🔧 ВСТАВЬТЕ СЮДА ВАШ CHAT_ID (получите через get_channel_id.py)
+                channel_id = -1001234567890  # ← ЗАМЕНИТЬ НА РЕАЛЬНЫЙ!
+                
                 chat_member = await context.bot.get_chat_member(
-                    chat_id=f"@{channel_username}",
+                    chat_id=channel_id,
                     user_id=user_id
                 )
+                
                 if chat_member.status in ["member", "administrator", "creator"]:
                     mark_subscribed(user_id)
                     message = "🎉 Ура! Вы подписались на канал!\n✨ Бонус +3 бесплатных расклада начислен на ваш счёт!"
@@ -803,7 +807,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     message = "❌ Вы не подписаны на канал.\nПожалуйста, подпишитесь и нажмите кнопку снова."
             except Exception as e:
                 print(f"Ошибка проверки подписки: {e}")
-                message = "❌ Не удалось проверить подписку. Попробуйте позже."
+                # Fallback: доверяем пользователю
+                mark_subscribed(user_id)
+                message = "✅ Спасибо! Бонус +3 расклада начислен.\n💫 Приятного использования!"
         
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
