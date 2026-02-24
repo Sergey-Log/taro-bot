@@ -1,25 +1,23 @@
 ﻿import os
 from dotenv import load_dotenv
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 from telegram import BotCommand
 from flask import Flask
 import threading
-
 from handlers import (
     start_handler, button_handler, history_command, terms_command,
     daily_command, balance_command, help_command, menu_command,
-    reading_step_1_handler, reading_step_2_handler
+    reading_step_1_handler, reading_step_2_handler, account_command_handler
 )
 from utils import init_db
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
-
 app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v5.13"
+    return "✅ v6.0"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -31,6 +29,7 @@ async def post_init(application):
         BotCommand("menu", "🏠 Главное меню"),
         BotCommand("daily", "🌅 Карта дня (бесплатно)"),
         BotCommand("balance", "⚖️ Проверить баланс"),
+        BotCommand("account", "👤 Мой аккаунт"),
         BotCommand("help", "❓ Помощь и инструкции")
     ])
 
@@ -41,7 +40,7 @@ def main():
         return
     
     application = Application.builder().token(TOKEN).post_init(post_init).build()
-    
+
     # Регистрация ВСЕХ обработчиков
     application.add_handler(start_handler)
     application.add_handler(CommandHandler("menu", menu_command))
@@ -50,13 +49,14 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("terms", terms_command))
-    
+    application.add_handler(CommandHandler("account", account_command_handler))
+
     # Глобальные обработчики для кнопок "Далее"
     application.add_handler(CallbackQueryHandler(reading_step_1_handler, pattern='^reading_step_1$'))
     application.add_handler(CallbackQueryHandler(reading_step_2_handler, pattern='^reading_step_2$'))
     application.add_handler(CallbackQueryHandler(button_handler))
-    
-    print("✅ Бот запущен v5.13 (кнопка Далее + команда /menu)")
+
+    print("✅ Бот запущен v6.0 (Аккаунт + Картинки + Исправлена подписка)")
     application.run_polling()
 
 def run_flask():

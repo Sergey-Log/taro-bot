@@ -4,22 +4,21 @@ from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 from flask import request
-
 from utils import (
     add_user, get_balance, decrease_balance, get_saved_slots, save_reading,
     get_saved_reading, delete_saved_reading, create_payment, complete_payment,
     get_user_data, save_user_data, get_random_cards, format_reading,
     get_spread_options, get_referral_count, add_referral, mark_subscribed,
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
-    format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice
+    format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice,
+    increment_reading_count, get_reading_count
 )
 
-ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE = range(5)
+ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE, CHANGING_NAME = range(6)
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     add_user(user.id, user.username, user.first_name)
-    
     if context.args:
         try:
             referrer_id = int(context.args[0])
@@ -30,25 +29,28 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             chat_id=referrer_id,
                             text=f"🎉 Отлично! Ваш друг {user.first_name} присоединился!\nВы получили +1 расклад к балансу!"
                         )
-                    except: pass
-        except: pass
-    
+                    except:
+                        pass
+        except:
+            pass
+
     user_data = get_user_data(user.id)
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
         await update.message.reply_text(
             "✨ Добро пожаловать в мир Таро!\n\n"
             "🔮 Для персонализированного гадания мне нужно узнать вас немного лучше.\n\n"
-            "💫 Сначала напишите, как вас зовут:"
+            "💫 Сначала напишите, как вас зовут: "
         )
         return ASKING_NAME
-    
+
     balance = get_balance(user.id)
     message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ {user_data['name']}, ваш баланс: {balance} раскладов"
-    
+
     keyboard = [
         [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("👤 Аккаунт", callback_data='account')],
         [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
         [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
@@ -62,11 +64,10 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(name) < 2:
         await update.message.reply_text("❌ Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
         return ASKING_NAME
-    
     if not re.match(r'^[a-zA-Zа-яА-ЯёЁ\s]+$', name):
         await update.message.reply_text("❌ Имя может содержать только буквы и пробелы. Попробуйте ещё раз:")
         return ASKING_NAME
-    
+
     context.user_data['temp_name'] = name
     await update.message.reply_text(
         f"✨ Приятно познакомиться, {name}!\n\n"
@@ -77,7 +78,6 @@ async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     birthdate = update.message.text.strip()
-    
     if not re.match(r'^\d{2}\.\d{2}\.\d{4}$', birthdate):
         await update.message.reply_text(
             "❌ Неверный формат даты.\n"
@@ -85,7 +85,7 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Пример: 15.08.1990"
         )
         return ASKING_BIRTHDATE
-    
+
     try:
         day, month, year = map(int, birthdate.split('.'))
         birth_date = datetime(year, month, day)
@@ -104,28 +104,57 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "📅 Пример: 15.08.1990 (а не 31.02.1990)"
         )
         return ASKING_BIRTHDATE
-    
+
     user_id = update.effective_user.id
     name = context.user_data.get('temp_name', 'Аноним')
     save_user_data(user_id, name, birthdate)
-    
+
     if 'temp_name' in context.user_data:
         del context.user_data['temp_name']
-    
+
     balance = get_balance(user_id)
     await update.message.reply_text(
         f"✅ Отлично, {name}! Данные сохранены.\n\n"
         f"✨ Ваш баланс: {balance} раскладов\n"
         f"🎴 Готовы к первому гаданию?"
     )
-    
+
     keyboard = [
         [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("👤 Аккаунт", callback_data='account')],
         [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
         [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("🔮 Выберите действие:", reply_markup=reply_markup)
+    return ConversationHandler.END
+
+async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name = update.message.text.strip()
+    if len(name) < 2:
+        await update.message.reply_text("❌ Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
+        return CHANGING_NAME
+    if not re.match(r'^[a-zA-Zа-яА-ЯёЁ\s]+$', name):
+        await update.message.reply_text("❌ Имя может содержать только буквы и пробелы. Попробуйте ещё раз:")
+        return CHANGING_NAME
+
+    user_id = update.effective_user.id
+    user_data = get_user_data(user_id)
+    if user_data and user_data.get('birthdate'):
+        save_user_data(user_id, name, user_data['birthdate'])
+    
+    balance = get_balance(user_id)
+    await update.message.reply_text(
+        f"✅ Имя изменено на: {name}!\n\n"
+        f"✨ Ваш баланс: {balance} раскладов"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')],
+        [InlineKeyboardButton("👤 Аккаунт", callback_data='account')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("🔮 Выберите действие:", reply_markup=reply_markup)
@@ -136,20 +165,19 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     slots = get_saved_slots(user_id)
     occupied = len(slots)
     free = 3 - occupied
-    
     message = f"🗄️ МОИ СОХРАНЁННЫЕ РАСКЛАДЫ 🗄️\n\n📦 Доступно ячеек для сохранения: {occupied}/3\n"
     if free > 0:
         message += f"✨ Свободно ячеек: {free}\n\n"
     else:
         message += "⚠️ Все ячейки заняты.\n\n"
-    
+
     if not slots:
         message += "У вас пока нет сохранённых раскладов.\nСделайте расклад и нажмите «💾 Сохранить»!"
         keyboard = [[InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await update.message.reply_text(text=message, reply_markup=reply_markup)
         return
-    
+
     keyboard = []
     for slot_num in sorted(slots.keys()):
         timestamp = slots[slot_num]
@@ -175,18 +203,24 @@ async def terms_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
-    
     if not user_data or not user_data.get('name'):
         await update.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
-    
+
     if can_get_daily_card(user_id):
         card = get_random_cards(1)[0]
         card_name, interpretation = card
         reading = format_daily_card(card_name, interpretation, user_data['name'])
         save_daily_card(user_id, card_name, reading)
+        increment_reading_count(user_id)
         
-        await update.message.reply_text(text=reading)
+        # Отправляем с изображением карты
+        image_url = interpretation.get('image', None)
+        if image_url:
+            await update.message.reply_photo(photo=image_url, caption=reading)
+        else:
+            await update.message.reply_text(text=reading)
+        
         await update.message.reply_text(
             text="🌅 Карта дня получена! Возвращайтесь завтра за новой картой.",
             reply_markup=InlineKeyboardMarkup([
@@ -205,11 +239,10 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
-    
     if not user_data or not user_data.get('name'):
         await update.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
-    
+
     balance = get_balance(user_id)
     message = (
         f"⚖️ ВАШ ТЕКУЩИЙ БАЛАНС ⚖️\n"
@@ -254,37 +287,64 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
 
+async def account_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_data = get_user_data(user_id)
+    if not user_data or not user_data.get('name'):
+        await update.message.reply_text("Сначала укажите имя и дату рождения через /start")
+        return
+
+    balance = get_balance(user_id)
+    referral_count = get_referral_count(user_id)
+    reading_count = get_reading_count(user_id)
+    
+    message = (
+        f"👤 ВАШ АККАУНТ 👤\n"
+        f"\n✨ Имя: {user_data['name']}\n"
+        f"📅 Дата рождения: {user_data.get('birthdate', 'Не указана')}\n"
+        f"\n⚖️ Баланс: {balance} раскладов\n"
+        f"🎴 Всего раскладов сделано: {reading_count}\n"
+        f"👥 Приглашено друзей: {referral_count}\n"
+        f"\n💫 Хотите изменить имя? Нажмите кнопку ниже!"
+    )
+    
+    keyboard = [
+        [InlineKeyboardButton("✏️ Изменить имя", callback_data='change_name')],
+        [InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(text=message, reply_markup=reply_markup)
+
 async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
     user_id = query.from_user.id
     spread_id = query.data.replace('spread_', '')
-    
+
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name'):
         await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
-    
+
     balance = get_balance(user_id)
     if balance <= 0:
         await query.edit_message_text(text="❌ У вас недостаточно раскладов. Пополните баланс!")
         return
-    
+
     if not decrease_balance(user_id, 1):
         await query.edit_message_text(text="❌ Ошибка при списании расклада. Попробуйте позже.")
         return
-    
+
     new_balance = get_balance(user_id)
     spreads = get_spread_options()
-    
+
     if spread_id not in spreads:
         await query.edit_message_text(text=f"❌ Неверный тип расклада: '{spread_id}'")
         return
-    
+
     spread_info = spreads[spread_id]
     cards = get_random_cards(spread_info['cards_count'])
-    
+
     context.user_data['current_reading'] = {
         'spread_id': spread_id,
         'cards': cards,
@@ -292,56 +352,54 @@ async def process_spread_selection(update: Update, context: ContextTypes.DEFAULT
         'user_name': user_data['name'],
         'balance_after': new_balance
     }
-    
+
     intro_text = format_reading_intro(spread_id, user_data['name'])
     keyboard = [[InlineKeyboardButton("➡️ Далее", callback_data='reading_step_1')]]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
+
     await query.edit_message_text(text=intro_text, reply_markup=reply_markup)
     return READING_INTRO
 
 async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
     reading_data = context.user_data.get('current_reading', {})
     if not reading_data:
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
-    
+
     cards_text = format_reading_cards(
         reading_data['cards'],
         reading_data['user_name'],
         reading_data['positions'],
         reading_data['spread_id']
     )
-    
+
     keyboard = [
         [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_spread_choice')],
         [InlineKeyboardButton("➡️ Далее", callback_data='reading_step_2')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    
+
     await query.edit_message_text(text=cards_text, reply_markup=reply_markup)
     return READING_CARDS
 
 async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
     reading_data = context.user_data.get('current_reading', {})
     if not reading_data:
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
-    
+
     advice_text = format_reading_advice(
         reading_data['cards'],
         reading_data['spread_id']
     )
-    
+
     if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
-    
+
     full_reading = (
         format_reading_cards(
             reading_data['cards'],
@@ -350,12 +408,15 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reading_data['spread_id']
         ) + "\n\n" + advice_text
     )
-    
+
     context.user_data['pending_readings'][query.from_user.id] = (
         reading_data['cards'],
         full_reading
     )
-    
+
+    # Увеличиваем счётчик раскладов
+    increment_reading_count(query.from_user.id)
+
     keyboard = [
         [InlineKeyboardButton("⬅️ Назад к картам", callback_data='back_to_cards')],
         [InlineKeyboardButton("💾 Сохранить расклад", callback_data='save_last_reading')],
@@ -364,18 +425,29 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🏠 Главное меню", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # Отправляем совет с изображением первой карты если есть
+    first_card_image = reading_data['cards'][0][1].get('image', None) if reading_data['cards'] else None
     
-    await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text=advice_text,
-        reply_markup=reply_markup
-    )
-    
+    if first_card_image:
+        await context.bot.send_photo(
+            chat_id=query.message.chat_id,
+            photo=first_card_image,
+            caption=advice_text,
+            reply_markup=reply_markup
+        )
+    else:
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=advice_text,
+            reply_markup=reply_markup
+        )
+
     try:
         await query.message.delete()
     except:
         pass
-    
+
     return READING_ADVICE
 
 async def back_to_spread_choice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -398,11 +470,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == 'back_to_spread_choice':
         await back_to_spread_choice(update, context)
         return
-    
+
     if query.data == 'back_to_cards':
         await back_to_cards(update, context)
         return
-    
+
     if query.data == 'daily_card':
         user_data = get_user_data(user_id)
         if not user_data or not user_data.get('name'):
@@ -414,11 +486,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             card_name, interpretation = card
             reading = format_daily_card(card_name, interpretation, user_data['name'])
             save_daily_card(user_id, card_name, reading)
+            increment_reading_count(user_id)
             
-            await context.bot.send_message(
-                chat_id=query.message.chat_id,
-                text=reading
-            )
+            image_url = interpretation.get('image', None)
+            if image_url:
+                await context.bot.send_photo(
+                    chat_id=query.message.chat_id,
+                    photo=image_url,
+                    caption=reading
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id=query.message.chat_id,
+                    text=reading
+                )
+            
             await context.bot.send_message(
                 chat_id=query.message.chat_id,
                 text="🌅 Карта дня получена! Возвращайтесь завтра за новой картой.\n\n💫 Хотите сделать подробный расклад? Нажмите «🎴 Сделать расклад»",
@@ -435,25 +517,60 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ])
             )
         return
-    
+
     if query.data.startswith('spread_'):
         await process_spread_selection(update, context)
         return
-    
+
     if query.data == 'do_tarot':
         await choose_spread(update, context)
         return
-    
+
+    if query.data == 'account':
+        user_data = get_user_data(user_id)
+        if not user_data or not user_data.get('name'):
+            await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
+            return
+
+        balance = get_balance(user_id)
+        referral_count = get_referral_count(user_id)
+        reading_count = get_reading_count(user_id)
+        
+        message = (
+            f"👤 ВАШ АККАУНТ 👤\n"
+            f"\n✨ Имя: {user_data['name']}\n"
+            f"📅 Дата рождения: {user_data.get('birthdate', 'Не указана')}\n"
+            f"\n⚖️ Баланс: {balance} раскладов\n"
+            f"🎴 Всего раскладов сделано: {reading_count}\n"
+            f"👥 Приглашено друзей: {referral_count}\n"
+            f"\n💫 Хотите изменить имя? Нажмите кнопку ниже!"
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("✏️ Изменить имя", callback_data='change_name')],
+            [InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
+
+    if query.data == 'change_name':
+        await query.edit_message_text(
+            text="✏️ Введите новое имя:\n\n"
+                 "💫 Имя может содержать только буквы и пробелы."
+        )
+        return CHANGING_NAME
+
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
         await query.message.reply_text(
             "✨ Для начала гадания мне нужны ваши данные:\n"
             "1. Имя\n"
             "2. Дата рождения (ДД.ММ.ГГГГ)\n\n"
-            "Напишите своё имя:"
+            "Напишите своё имя: "
         )
         return
-    
+
     if query.data == 'save_last_reading':
         if 'pending_readings' in context.user_data and user_id in context.user_data.get('pending_readings', {}):
             cards, reading_text = context.user_data['pending_readings'][user_id]
@@ -468,7 +585,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text(text=message, reply_markup=reply_markup)
                 del context.user_data['pending_readings'][user_id]
             else:
-                message = "⚠️ Все 3 ячейки заняты. Сначала удалите старый расклад:"
+                message = "⚠️ Все 3 ячейки заняты. Сначала удалите старый расклад: "
                 keyboard = []
                 for slot_num, timestamp in slots.items():
                     keyboard.append([InlineKeyboardButton(f"❌ Ячейка #{slot_num} ({timestamp})", callback_data=f'delete_slot_{slot_num}')])
@@ -477,7 +594,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
             await query.edit_message_text(text="❌ Нет расклада для сохранения. Сначала сделайте расклад!")
-    
+
     elif query.data.startswith('delete_slot_'):
         slot_num = int(query.data.split('_')[2])
         if delete_saved_reading(user_id, slot_num):
@@ -487,7 +604,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'saved_readings':
         slots = get_saved_slots(user_id)
         occupied = len(slots)
@@ -513,7 +630,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data.startswith('view_slot_'):
         slot_num = int(query.data.split('_')[2])
         reading = get_saved_reading(user_id, slot_num)
@@ -525,7 +642,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
             await query.edit_message_text(text="❌ Расклад не найден.")
-    
+
     elif query.data == 'balance':
         balance = get_balance(user_id)
         message = (
@@ -544,7 +661,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'referral':
         ref_link = f"https://t.me/cardnotlie_bot?start={user_id}"
         referral_count = get_referral_count(user_id)
@@ -559,7 +676,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'buy_packs':
         message = (
             "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
@@ -573,7 +690,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'card_packs':
         message = (
             "💳 ПАКЕТЫ РАСКЛАДОВ 💳\n"
@@ -596,7 +713,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data.startswith('buy_'):
         pack_size = int(query.data.split('_')[1])
         prices = {1: 100, 3: 285, 7: 630, 13: 1105}
@@ -625,7 +742,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'terms' or query.data == 'terms_button':
         message = (
             "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
@@ -642,26 +759,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Назад к оплате", callback_data='buy_packs')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'subscribe':
-        subscribed = check_subscribed(user_id)
-        if subscribed:
+        # Исправленная проверка подписки
+        channel_username = "@cardnotlie_bot"  # Замените на ваш реальный канал
+        subscribed_db = check_subscribed(user_id)
+        
+        if subscribed_db:
             message = "✅ Вы уже подписаны на наш канал!\n💫 Бонус +3 расклада уже начислен."
         else:
             message = (
                 "📺 ПОДПИСКА НА КАНАЛ 📺\n"
                 "\nПодпишитесь на наш эзотерический канал и получите +3 бесплатных расклада!\n"
-                "\n✨ Канал: https://t.me/+5q7VJBPU4_QyMDky\n"
-                "\nПосле подписки нажмите кнопку ниже:"
+                "\n✨ Канал: https://t.me/tarot_channel_mystic\n"
+                "\nПосле подписки нажмите кнопку ниже: "
             )
         keyboard = [
-            [InlineKeyboardButton("📺 Перейти в канал", url="https://t.me/+5q7VJBPU4_QyMDky")],
+            [InlineKeyboardButton("📺 Перейти в канал", url="https://t.me/tarot_channel_mystic")],
             [InlineKeyboardButton("✅ Я подписался (+3 расклада)", callback_data='confirm_subscribe')],
             [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'confirm_subscribe':
         subscribed_db = check_subscribed(user_id)
         
@@ -669,8 +789,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = "✅ Вы уже получили бонус за подписку!"
         else:
             try:
+                # Исправленная проверка подписки через Telegram API
+                channel_username = "tarot_channel_mystic"  # Без @
                 chat_member = await context.bot.get_chat_member(
-                    chat_id="@+5q7VJBPU4_QyMDky",
+                    chat_id=f"@{channel_username}",
                     user_id=user_id
                 )
                 if chat_member.status in ["member", "administrator", "creator"]:
@@ -685,7 +807,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'help':
         message = (
             "❓ ПОМОЩЬ ❓\n"
@@ -711,11 +833,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
+
     elif query.data == 'back_to_menu':
         user_data = get_user_data(user_id)
         if not user_data or not user_data.get('name'):
-            await query.message.reply_text("Напишите своё имя:")
+            await query.message.reply_text("Напишите своё имя: ")
             return
         
         balance = get_balance(user_id)
@@ -724,6 +846,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
             [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
             [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
+            [InlineKeyboardButton("👤 Аккаунт", callback_data='account')],
             [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
             [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
             [InlineKeyboardButton("❓ Помощь", callback_data='help')]
@@ -734,13 +857,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    
     user_id = query.from_user.id
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name'):
         await query.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
-    
+
     balance = get_balance(user_id)
     if balance <= 0:
         keyboard = [
@@ -754,16 +876,16 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=reply_markup
         )
         return
-    
+
     spreads = get_spread_options()
     spreads.pop('daily', None)
-    
+
     message = "🎴 ВЫБЕРИТЕ ТИП РАСКЛАДА 🎴\n\n"
     keyboard = []
-    
+
     for spread_id, spread_info in spreads.items():
         keyboard.append([InlineKeyboardButton(spread_info['name'], callback_data=f'spread_{spread_id}')])
-    
+
     keyboard.append([InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
     await query.edit_message_text(text=message, reply_markup=reply_markup)
@@ -775,7 +897,8 @@ start_handler = ConversationHandler(
         ASKING_BIRTHDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_birthdate)],
         READING_INTRO: [CallbackQueryHandler(reading_step_1, pattern='^reading_step_1$')],
         READING_CARDS: [CallbackQueryHandler(reading_step_2, pattern='^reading_step_2$')],
-        READING_ADVICE: [CallbackQueryHandler(button_handler)]
+        READING_ADVICE: [CallbackQueryHandler(button_handler)],
+        CHANGING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, change_name)]
     },
     fallbacks=[CommandHandler("start", _start)],
     allow_reentry=True
@@ -790,21 +913,24 @@ async def reading_step_2_handler(update: Update, context: ContextTypes.DEFAULT_T
 async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     user_data = get_user_data(user_id)
-    
     if not user_data or not user_data.get('name'):
         await update.message.reply_text("Сначала укажите имя и дату рождения через /start")
         return
-    
+
     balance = get_balance(user_id)
     message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ {user_data['name']}, ваш баланс: {balance} раскладов"
-    
+
     keyboard = [
         [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
+        [InlineKeyboardButton("👤 Аккаунт", callback_data='account')],
         [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
         [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(text=message, reply_markup=reply_markup)
+
+async def account_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await account_command(update, context)

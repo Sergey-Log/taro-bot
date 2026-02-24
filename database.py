@@ -16,7 +16,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
     # Таблица рефералов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS referrals (
@@ -26,7 +26,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
     # Таблица сохранённых раскладов
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS saved_readings (
@@ -39,7 +39,7 @@ def init_db():
             UNIQUE(user_id, slot)
         )
     ''')
-    
+
     # Таблица платежей
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS payments (
@@ -55,7 +55,7 @@ def init_db():
             completed_at TIMESTAMP
         )
     ''')
-    
+
     # Таблица данных пользователя (имя, дата рождения)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS user_data (
@@ -65,7 +65,16 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
-    
+
+    # Таблица статистики раскладов
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reading_stats (
+            user_id INTEGER PRIMARY KEY,
+            total_readings INTEGER DEFAULT 0,
+            last_reading TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conn.commit()
     conn.close()
     print("✅ База данных инициализирована")
@@ -75,6 +84,7 @@ def add_user(user_id, username, first_name):
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('INSERT OR IGNORE INTO users (user_id, username, first_name, balance) VALUES (?, ?, ?, 1)', (user_id, username, first_name))
+    cursor.execute('INSERT OR IGNORE INTO reading_stats (user_id) VALUES (?)', (user_id,))
     conn.commit()
     conn.close()
 
