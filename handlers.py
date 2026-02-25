@@ -132,6 +132,7 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """✏️ Обработчик изменения имени"""
     name = update.message.text.strip()
     if len(name) < 2:
         await update.message.reply_text("❌ Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
@@ -146,9 +147,14 @@ async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_user_data(user_id, name, user_data['birthdate'])
     
     balance = get_balance(user_id)
+    referral_count = get_referral_count(user_id)
+    reading_count = get_reading_count(user_id)
+    
     await update.message.reply_text(
         f"✅ Имя изменено на: {name}!\n\n"
-        f"✨ Ваш баланс: {balance} раскладов"
+        f"✨ Ваш баланс: {balance} раскладов\n"
+        f"🎴 Всего раскладов: {reading_count}\n"
+        f"👥 Друзей: {referral_count}"
     )
     
     keyboard = [
@@ -424,11 +430,23 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text=advice_text,
-        reply_markup=reply_markup
-    )
+    # 🔧 ОТПРАВЛЯЕМ С ИЗОбРАЖЕНИЕМ ПЕРВОЙ КАРТЫ
+    first_card_image = get_card_image_path(reading_data['cards'][0][0]) if reading_data['cards'] else None
+    
+    if first_card_image and os.path.exists(first_card_image):
+        with open(first_card_image, 'rb') as photo:
+            await context.bot.send_photo(
+                chat_id=query.message.chat_id,
+                photo=photo,
+                caption=advice_text,
+                reply_markup=reply_markup
+            )
+    else:
+        await context.bot.send_message(
+            chat_id=query.message.chat_id,
+            text=advice_text,
+            reply_markup=reply_markup
+        )
 
     try:
         await query.message.delete()
