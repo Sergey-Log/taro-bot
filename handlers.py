@@ -219,6 +219,7 @@ async def daily_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_daily_card(user_id, card_name, reading)
         increment_reading_count(user_id)
         
+        # 🔧 ОТПРАВКА С ИЗОБРАЖЕНИЕМ
         image_path = get_card_image_path(card_name)
         if image_path and os.path.exists(image_path):
             with open(image_path, 'rb') as photo:
@@ -430,7 +431,7 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # 🔧 ОТПРАВЛЯЕМ С ИЗОБРАЖЕНИЕМ ПЕРВОЙ КАРТЫ
+    # 🔧 ОТПРАВКА С ИЗОБРАЖЕНИЕМ ПЕРВОЙ КАРТЫ
     first_card_image = get_card_image_path(reading_data['cards'][0][0]) if reading_data['cards'] else None
     
     if first_card_image and os.path.exists(first_card_image):
