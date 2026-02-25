@@ -430,7 +430,7 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # 🔧 ОТПРАВЛЯЕМ С ИЗОбРАЖЕНИЕМ ПЕРВОЙ КАРТЫ
+    # 🔧 ОТПРАВЛЯЕМ С ИЗОБРАЖЕНИЕМ ПЕРВОЙ КАРТЫ
     first_card_image = get_card_image_path(reading_data['cards'][0][0]) if reading_data['cards'] else None
     
     if first_card_image and os.path.exists(first_card_image):
@@ -903,7 +903,8 @@ start_handler = ConversationHandler(
         CHANGING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, change_name)]
     },
     fallbacks=[CommandHandler("start", _start)],
-    allow_reentry=True
+    allow_reentry=True,
+    per_message=False
 )
 
 async def reading_step_1_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
