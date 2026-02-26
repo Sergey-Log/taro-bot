@@ -27,11 +27,7 @@ ADMIN_USERNAME = "jobphone_admin"
 
 def is_admin(user_id, username=None):
     """Проверка, является ли пользователь админом"""
-    if user_id == ADMIN_ID:
-        return True
-    if username and username.lower() == ADMIN_USERNAME.lower():
-        return True
-    return False
+    return user_id == ADMIN_ID  # ✅ Только по ID
 
 # ============================================================================
 # 🔧 АДМИН-КОМАНДЫ
