@@ -10,7 +10,8 @@ from utils import (
     get_spread_options, get_referral_count, add_referral, mark_subscribed,
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice,
-    get_card_image_path, increment_reading_count, get_reading_count
+    get_card_image_path, increment_reading_count, get_reading_count,
+    create_sbp_payment, check_payment_status
 )
 
 ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE = range(5)
@@ -245,8 +246,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "• За подписку: +3 расклада.\n"
         "• Покупка пакетов со скидкой до 15%.\n"
         "\n💳 ОПЛАТА:\n"
+        "• СБП — автоматическое начисление ⚡\n"
         "• Банковская карта — ручная проверка скриншота ⏳\n"
-        "• Криптовалюта — в разработке 🔜\n"
         "• Подробнее об условиях: /terms"
     )
     keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
@@ -556,14 +557,19 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=message, reply_markup=reply_markup)
         return
     
-    user_data = get_user_data(user_id)
-    if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
-        await query.message.reply_text(
-            "✨ Для начала гадания мне нужны ваши данные:\n"
-            "1. Имя\n"
-            "2. Дата рождения (ДД.ММ.ГГГГ)\n\n"
-            "Напишите своё имя: "
+    if query.data == 'referral':
+        ref_link = f"https://t.me/cardnotlie_bot?start={user_id}"
+        referral_count = get_referral_count(user_id)
+        message = (
+            f"🎁 РЕФЕРАЛЬНАЯ ПРОГРАММА 🎁\n\n"
+            f"✨ Ваша реферальная ссылка:\n{ref_link}\n\n"
+            f"📊 Приглашено друзей: {referral_count}\n"
+            f"💫 За каждого друга — +1 бесплатный расклад!\n\n"
+            f"📤 Просто отправьте ссылку друзьям или в соцсети!"
         )
+        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
         return
     
     if query.data == 'save_last_reading':
@@ -589,8 +595,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
             await query.edit_message_text(text="❌ Нет расклада для сохранения. Сначала сделайте расклад!")
+        return
     
-    elif query.data.startswith('delete_slot_'):
+    if query.data.startswith('delete_slot_'):
         slot_num = int(query.data.split('_')[2])
         if delete_saved_reading(user_id, slot_num):
             message = f"✅ Расклад из ячейки #{slot_num} удалён."
@@ -599,8 +606,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data == 'saved_readings':
+    if query.data == 'saved_readings':
         slots = get_saved_slots(user_id)
         occupied = len(slots)
         free = 3 - occupied
@@ -625,8 +633,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')])
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data.startswith('view_slot_'):
+    if query.data.startswith('view_slot_'):
         slot_num = int(query.data.split('_')[2])
         reading = get_saved_reading(user_id, slot_num)
         if reading:
@@ -637,8 +646,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(text=message, reply_markup=reply_markup)
         else:
             await query.edit_message_text(text="❌ Расклад не найден.")
+        return
     
-    elif query.data == 'balance':
+    if query.data == 'balance':
         balance = get_balance(user_id)
         message = (
             f"⚖️ ВАШ ТЕКУЩИЙ БАЛАНС ⚖️\n"
@@ -654,36 +664,117 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data == 'referral':
-        ref_link = f"https://t.me/cardnotlie_bot?start={user_id}"
-        referral_count = get_referral_count(user_id)
-        message = (
-            f"🎁 РЕФЕРАЛЬНАЯ ПРОГРАММА 🎁\n\n"
-            f"✨ Ваша реферальная ссылка:\n{ref_link}\n\n"
-            f"📊 Приглашено друзей: {referral_count}\n"
-            f"💫 За каждого друга — +1 бесплатный расклад!\n\n"
-            f"📤 Просто отправьте ссылку друзьям или в соцсети!"
-        )
-        keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await query.edit_message_text(text=message, reply_markup=reply_markup)
-    
-    elif query.data == 'buy_packs':
+    if query.data == 'buy_packs':
         message = (
             "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
             "\nВыберите удобный способ:\n"
-            "\n🏦 Банковская карта — требуется ручная проверка скриншота ⏳\n"
-            "💎 Криптовалюта — в разработке 🔜"
+            "\n⚡ СБП — автоматическое начисление (рекомендуется)\n"
+            "🏦 Банковская карта — ручная проверка скриншота ⏳\n"
         )
         keyboard = [
+            [InlineKeyboardButton("⚡ СБП (автоматически)", callback_data='sbp_packs')],
             [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
             [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data == 'card_packs':
+    if query.data == 'sbp_packs':
+        message = (
+            "💳 ПАКЕТЫ РАСКЛАДОВ (СБП) 💳\n"
+            "\n✨ Выберите пакет со скидкой:\n"
+            "\n🎴 1 расклад — 100 ₽\n"
+            "🎴 3 расклада — 285 ₽ (-5%)\n"
+            "🎴 7 раскладов — 630 ₽ (-10%)\n"
+            "🎴 13 раскладов — 1 105 ₽ (-15%)\n"
+        )
+        keyboard = [
+            [InlineKeyboardButton("1 расклад — 100₽", callback_data='sbp_buy_1')],
+            [InlineKeyboardButton("3 расклада — 285₽ (-5%)", callback_data='sbp_buy_3')],
+            [InlineKeyboardButton("7 раскладов — 630₽ (-10%)", callback_data='sbp_buy_7')],
+            [InlineKeyboardButton("13 раскладов — 1 105₽ (-15%)", callback_data='sbp_buy_13')],
+            [InlineKeyboardButton("⬅️ Назад", callback_data='buy_packs')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
+    
+    if query.data.startswith('sbp_buy_'):
+        pack_size = int(query.data.split('_')[2])
+        prices = {1: 100, 3: 285, 7: 630, 13: 1105}
+        price = prices[pack_size]
+        discounts = {1: "0%", 3: "5%", 7: "10%", 13: "15%"}
+        discount = discounts[pack_size]
+        
+        payment_data = await create_sbp_payment(user_id, price, pack_size)
+        
+        if payment_data and payment_data.get('payment_url'):
+            message = (
+                f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n"
+                f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
+                f"\n📱 ОПЛАТА ЧЕРЕЗ СБП:\n"
+                f"1. Нажмите кнопку «📱 Оплатить через СБП» ниже\n"
+                f"2. Отсканируйте QR-код в приложении вашего банка\n"
+                f"3. Нажмите «🔄 Проверить статус» после оплаты\n"
+                f"\n⏳ Платёж действителен 30 минут.\n"
+                f"\nℹ️ Подробнее об условиях оплаты: /terms"
+            )
+            keyboard = [
+                [InlineKeyboardButton("📱 Оплатить через СБП", url=payment_data['payment_url'])],
+                [InlineKeyboardButton("🔄 Проверить статус оплаты", callback_data=f'check_payment_{payment_data["payment_id"]}')],
+                [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='sbp_packs')],
+                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+            ]
+        else:
+            message = (
+                f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n"
+                f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
+                f"\n⚠️ Временно недоступно. Попробуйте оплату картой.\n"
+            )
+            keyboard = [
+                [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
+                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+            ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
+    
+    if query.data.startswith('check_payment_'):
+        payment_id = query.data.replace('check_payment_', '')
+        
+        await query.answer("⏳ Проверяем статус оплаты...")
+        
+        payment_status = await check_payment_status(payment_id)
+        
+        if payment_status:
+            if payment_status['status'] == 'PAID':
+                message = "✅ Оплата подтверждена! Расклады начислены на ваш баланс.\n\n🎴 Приятного пользования!"
+                keyboard = [[InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')]]
+            elif payment_status['status'] == 'PENDING':
+                message = "⏳ Оплата ещё не подтверждена.\n\nПожалуйста, завершите оплату в приложении банка и нажмите «Проверить статус» снова."
+                keyboard = [
+                    [InlineKeyboardButton("🔄 Проверить статус", callback_data=f'check_payment_{payment_id}')],
+                    [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+                ]
+            else:
+                message = "❌ Платёж не найден или отклонён.\n\nПопробуйте создать новый платёж."
+                keyboard = [[InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')]]
+        else:
+            message = "⏳ Ожидание оплаты...\n\nНажмите «Проверить статус» через 1-2 минуты после оплаты."
+            keyboard = [
+                [InlineKeyboardButton("🔄 Проверить статус", callback_data=f'check_payment_{payment_id}')],
+                [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
+            ]
+        
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
+    
+    if query.data == 'card_packs':
         message = (
             "💳 ПАКЕТЫ РАСКЛАДОВ 💳\n"
             "\n✨ Выберите пакет со скидкой:\n"
@@ -705,8 +796,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data.startswith('buy_'):
+    if query.data.startswith('buy_'):
         pack_size = int(query.data.split('_')[1])
         prices = {1: 100, 3: 285, 7: 630, 13: 1105}
         price = prices[pack_size]
@@ -734,8 +826,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data == 'terms' or query.data == 'terms_button':
+    if query.data == 'terms' or query.data == 'terms_button':
         message = (
             "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
             "\n💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
@@ -751,8 +844,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Назад к оплате", callback_data='buy_packs')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data == 'subscribe':
+    if query.data == 'subscribe':
         subscribed = check_subscribed(user_id)
         if subscribed:
             message = "✅ Вы уже подписаны на наш канал!\n💫 Бонус +3 расклада уже начислен."
@@ -770,8 +864,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data == 'confirm_subscribe':
+    if query.data == 'confirm_subscribe':
         subscribed_db = check_subscribed(user_id)
         
         if subscribed_db:
@@ -795,8 +890,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data == 'help':
+    if query.data == 'help':
         message = (
             "❓ ПОМОЩЬ ❓\n"
             "\n✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
@@ -814,15 +910,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "• За подписку: +3 расклада.\n"
             "• Покупка пакетов со скидкой до 15%.\n"
             "\n💳 ОПЛАТА:\n"
+            "• СБП — автоматическое начисление ⚡\n"
             "• Банковская карта — ручная проверка скриншота ⏳\n"
-            "• Криптовалюта — в разработке 🔜\n"
             "• Подробнее об условиях: /terms"
         )
         keyboard = [[InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
     
-    elif query.data == 'back_to_menu':
+    if query.data == 'back_to_menu':
         user_data = get_user_data(user_id)
         if not user_data or not user_data.get('name'):
             await query.message.reply_text("Напишите своё имя:")
@@ -839,6 +936,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
+        return
 
 async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -869,7 +967,6 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = "🎴 ВЫБЕРИТЕ ТИП РАСКЛАДА 🎴\n\n"
     keyboard = []
     
-    # 🔧 ДОБАВЛЕНА КАРТА ДНЯ В СПИСОК РАСКЛАДОВ
     keyboard.append([InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')])
     
     for spread_id, spread_info in spreads.items():

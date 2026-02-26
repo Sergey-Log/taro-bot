@@ -2,6 +2,9 @@ import sqlite3
 import random
 import re
 import os
+import hashlib
+import hmac
+import aiohttp
 from datetime import datetime, timedelta
 
 def init_db():
@@ -312,6 +315,143 @@ def get_card_image_path(card_name):
             return path
     return None
 
+# ============================================================================
+# 🔧 НОВЫЕ ФУНКЦИИ ДЛЯ ОПЛАТЫ СБП (Альфа-Бизнес API) - БЕЗ ВЕБХУКА
+# ============================================================================
+
+ALPHA_API_URL = "https://business.alfa.ru/api/v2"
+ALPHA_TEST_URL = "https://test-business.alfa.ru/api/v2"
+
+def get_alpha_api_url():
+    test_mode = os.getenv("ALPHA_TEST_MODE", "true").lower() == "true"
+    return ALPHA_TEST_URL if test_mode else ALPHA_API_URL
+
+def generate_payment_id(user_id, amount):
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    data = f"{user_id}_{amount}_{timestamp}"
+    return hashlib.md5(data.encode()).hexdigest()[:32]
+
+def generate_sign(data, secret_key):
+    sorted_data = "&".join([f"{k}={v}" for k, v in sorted(data.items())])
+    sign = hmac.new(
+        secret_key.encode(),
+        sorted_data.encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return sign.upper()
+
+async def create_sbp_payment(user_id, amount_rub, pack_size):
+    client_id = os.getenv("ALPHA_CLIENT_ID")
+    secret_key = os.getenv("ALPHA_SECRET_KEY")
+    merchant_id = os.getenv("ALPHA_MERCHANT_ID")
+    
+    if not all([client_id, secret_key, merchant_id]):
+        print("❌ Не настроены credentials Альфа-Бизнес")
+        return None
+    
+    payment_id = generate_payment_id(user_id, amount_rub)
+    api_url = get_alpha_api_url()
+    
+    request_data = {
+        "merchantId": merchant_id,
+        "paymentId": payment_id,
+        "amount": str(amount_rub),
+        "currency": "RUB",
+        "description": f"Пакет раскладов Таро ({pack_size} шт.)",
+        "expiration": (datetime.now() + timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M:%S"),
+        "callbackUrl": ""
+    }
+    
+    sign = generate_sign(request_data, secret_key)
+    request_data["signature"] = sign
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{api_url}/sbp/payment",
+                json=request_data,
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                result = await response.json()
+                
+                if response.status == 200 and result.get("success"):
+                    create_payment(
+                        user_id=user_id,
+                        amount_rub=amount_rub,
+                        pack_size=pack_size,
+                        payment_id=payment_id,
+                        crypto_currency="SBP",
+                        crypto_amount=0
+                    )
+                    
+                    return {
+                        "payment_id": payment_id,
+                        "payment_url": result.get("paymentUrl"),
+                        "qr_code": result.get("qrCode"),
+                        "amount": amount_rub,
+                        "pack_size": pack_size
+                    }
+                else:
+                    print(f"❌ Ошибка создания платежа: {result}")
+                    return None
+                    
+    except Exception as e:
+        print(f"❌ Ошибка подключения к API Альфа: {e}")
+        return None
+
+async def check_payment_status(payment_id):
+    client_id = os.getenv("ALPHA_CLIENT_ID")
+    secret_key = os.getenv("ALPHA_SECRET_KEY")
+    merchant_id = os.getenv("ALPHA_MERCHANT_ID")
+    
+    if not all([client_id, secret_key, merchant_id]):
+        return None
+    
+    api_url = get_alpha_api_url()
+    
+    request_data = {
+        "merchantId": merchant_id,
+        "paymentId": payment_id
+    }
+    
+    sign = generate_sign(request_data, secret_key)
+    request_data["signature"] = sign
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{api_url}/sbp/status",
+                json=request_data,
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                result = await response.json()
+                
+                if response.status == 200:
+                    status = result.get("status")
+                    
+                    if status == "PAID":
+                        user_id, pack_size = complete_payment(payment_id, "SBP")
+                        if user_id and pack_size:
+                            print(f"✅ Платёж {payment_id} обработан. Пользователь {user_id} получил {pack_size} раскладов.")
+                    
+                    return {
+                        "payment_id": payment_id,
+                        "status": status,
+                        "amount": result.get("amount"),
+                        "paid_at": result.get("paidAt")
+                    }
+                else:
+                    print(f"❌ Ошибка проверки статуса: {result}")
+                    return None
+                    
+    except Exception as e:
+        print(f"❌ Ошибка проверки статуса: {e}")
+        return None
+
+# ============================================================================
+# ДАННЫЕ КАРТ ТАРО (22 Старших Аркана)
+# ============================================================================
+
 MAJOR_ARCANA = {
     "Шут": {
         "short": "Новые начинания, спонтанность, вера в будущее",
@@ -555,76 +695,51 @@ def format_reading_advice(cards, spread_id):
         advice_parts = []
         if "Шут" in card_names or "Маг" in card_names:
             advice_parts.append("✨ Вы находитесь на пороге новых возможностей. Доверяйте своей интуиции и не бойтесь делать первый шаг — вселенная поддерживает ваши начинания.")
-        
         if "Сила" in card_names or "Отшельник" in card_names:
             advice_parts.append("💫 Сейчас важнее всего внутренняя работа. Уделите время саморефлексии, медитации или ведению дневника. Ответы уже внутри вас.")
-        
         if "Колесница" in card_names or "Император" in card_names:
             advice_parts.append("🔥 Ваша сила — в дисциплине и целеустремлённости. Составьте чёткий план действий и следуйте ему, несмотря на препятствия.")
-        
         if "Луна" in card_names or "Башня" in card_names:
             advice_parts.append("🌙 Будьте готовы к неожиданным переменам и проявлению скрытых истин. Не цепляйтесь за старое — иногда разрушение необходимо для нового роста.")
-        
         if "Солнце" in card_names or "Звезда" in card_names:
             advice_parts.append("☀️ Вас ждёт период света, радости и гармонии. Радуйтесь мелочам, делитесь своей энергией с близкими.")
-        
         if "Суд" in card_names or "Мир" in card_names:
             advice_parts.append("🎉 Вы завершаете важный цикл в жизни. Подведите итоги, поблагодарите за опыт и смело открывайте новую главу.")
-        
         if not advice_parts:
             advice_parts.append("💫 Помните: карты Таро показывают не предопределённое будущее, а возможности и потенциал текущего момента. Выбор всегда остаётся за вами.")
-        
         result += "\n\n".join(advice_parts)
-
     elif spread_id == 'relationship':
         advice_parts = []
-        
         if "Влюблённые" in card_names:
             advice_parts.append("❤️‍🔥 Ваши отношения находятся в гармоничной фазе. Доверяйте своей интуиции и открыто выражайте чувства.")
-        
         if "Повешенный" in card_names or "Отшельник" in card_names:
             advice_parts.append("💫 Возможно, вам или вашему партнёру нужно время для себя. Не торопите события — дайте отношениям «дозреть».")
-        
         if "Башня" in card_names or "Смерть" in card_names:
             advice_parts.append("🌙 Отношения проходят через трансформацию. Не цепляйтесь за старые шаблоны и ожидания.")
-        
         if "Солнце" in card_names or "Звезда" in card_names:
             advice_parts.append("☀️ Вас ждёт период гармонии, взаимопонимания и радости в отношениях.")
-        
         if "Дьявол" in card_names:
             advice_parts.append("⚠️ Обратите внимание на токсичные паттерны в отношениях. Освободитесь от того, что держит вас в плену.")
-        
         if not advice_parts:
             advice_parts.append("💫 Отношения — это зеркало вашей души и путь к самопознанию. Доверяйте своей интуиции, будьте честны с собой и партнёром.")
-        
         result += "\n\n".join(advice_parts)
-
     elif spread_id == 'career':
         advice_parts = []
-        
         if "Маг" in card_names or "Император" in card_names:
             advice_parts.append("💼 Вы обладаете всеми ресурсами и талантами для профессионального успеха. Действуйте уверенно.")
-        
         if "Колесница" in card_names or "Сила" in card_names:
             advice_parts.append("🚀 Ваша целеустремлённость и внутренняя сила приведут к успеху. Не сдавайтесь перед препятствиями.")
-        
         if "Отшельник" in card_names or "Повешенный" in card_names:
             advice_parts.append("💫 Возможно, вам нужно время для анализа и переоценки карьерных целей.")
-        
         if "Башня" in card_names or "Смерть" in card_names:
             advice_parts.append("🌙 Карьера проходит через важную трансформацию. Не бойтесь перемен.")
-        
         if "Солнце" in card_names or "Звезда" in card_names:
             advice_parts.append("☀️ Вас ждёт период профессионального роста, признания и успеха.")
-        
         if "Дьявол" in card_names:
             advice_parts.append("⚠️ Обратите внимание на баланс между работой и личной жизнью.")
-        
         if not advice_parts:
             advice_parts.append("💫 Карьера — это путь самореализации и выражения ваших талантов миру. Верьте в себя!")
-        
         result += "\n\n".join(advice_parts)
-
     else:
         if "Шут" in card_names or "Маг" in card_names:
             result += "✨ Доверяйте интуиции — новые возможности уже на подходе!"
@@ -640,7 +755,6 @@ def format_reading_advice(cards, spread_id):
             result += "🎉 Вы завершаете важный цикл — готовьтесь к новому началу."
         else:
             result += "💫 Доверяйте себе — вы сильнее, чем думаете!"
-
     result += "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     result += "⚠️ ВАЖНО:\n"
     result += "Таро показывает возможные сценарии и энергии момента,\n"
@@ -648,7 +762,6 @@ def format_reading_advice(cards, spread_id):
     result += "Ваш выбор, действия и отношение формируют реальность.\n"
     result += "Используйте расклад как инструмент рефлексии, а не как приговор.\n"
     result += "Вы — творец своей жизни! 💫\n"
-
     return result
 
 def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
@@ -673,13 +786,11 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
             positions = [f"🎴 КАРТА {i+1}" for i in range(count)]
     result = f"🔮 ПЕРСОНАЛИЗИРОВАННЫЙ РАСКЛАД ДЛЯ {user_name.upper()} 🔮\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-
     for i, (pos, (name, interpretation)) in enumerate(zip(positions, cards)):
         result += f"{pos}\n"
         result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         result += f"✨ КАРТА: {name}\n"
         result += f"💫 ГЛУБИННОЕ ЗНАЧЕНИЕ:\n{interpretation['short']}\n\n"
-        
         if spread_id not in ['celtic_cross', 'past_present_future']:
             if spread_id == 'relationship':
                 result += f"❤️‍🔥 В ЛЮБВИ И ОТНОШЕНИЯХ:\n{interpretation['love']}\n\n"
@@ -688,12 +799,10 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
             else:
                 result += f"❤️‍🔥 В ЛЮБВИ: {interpretation['love']}\n"
                 result += f"💼 В КАРЬЕРЕ: {interpretation['career']}\n\n"
-
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     result += "🌟 СОВЕТ ТАРО 🌟\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     result += "💫 Доверяйте своей интуиции. Вы сильнее, чем думаете!\n"
     result += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     result += "🌙 Таро — инструмент самопознания 💫\n"
-
     return result
