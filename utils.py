@@ -806,3 +806,56 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
     result += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
     result += "🌙 Таро — инструмент самопознания 💫\n"
     return result
+
+
+# ============================================================================
+# 🔧 АДМИН-ПАНЕЛЬ - ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ============================================================================
+
+def get_all_users(limit=100):
+    """Получить список всех пользователей (для админа)"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT user_id, username, first_name, balance, created_at 
+        FROM users 
+        ORDER BY created_at DESC 
+        LIMIT ?
+    ''', (limit,))
+    results = cursor.fetchall()
+    conn.close()
+    return results
+
+def get_total_users_count():
+    """Получить общее количество пользователей"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM users')
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else 0
+
+def get_total_readings_count():
+    """Получить общее количество сделанных раскладов"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT SUM(total_readings) FROM reading_stats')
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result and result[0] else 0
+
+def get_user_by_username(username):
+    """Найти пользователя по username (для админа)"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT user_id, username, first_name, balance FROM users WHERE username = ?', (username,))
+    result = cursor.fetchone()
+    conn.close()
+    if result:
+        return {
+            'user_id': result[0],
+            'username': result[1],
+            'first_name': result[2],
+            'balance': result[3]
+        }
+    return None

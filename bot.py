@@ -7,7 +7,9 @@ import threading
 from handlers import (
     start_handler, button_handler, history_command, terms_command,
     daily_command, balance_command, help_command, menu_command,
-    reading_step_1_handler, reading_step_2_handler, account_command_handler
+    reading_step_1_handler, reading_step_2_handler, account_command_handler,
+    # 🔧 АДМИН-ПАНЕЛЬ - ИМПОРТ КОМАНД
+    admin_stats, admin_check, admin_addbalance, admin_users, admin_broadcast
 )
 from utils import init_db
 
@@ -34,7 +36,13 @@ async def post_init(application):
         BotCommand("account", "👤 Мой аккаунт"),
         BotCommand("history", "🗄️ Мои расклады"),
         BotCommand("terms", "📄 Условия оплаты"),
-        BotCommand("help", "❓ Помощь и инструкции")
+        BotCommand("help", "❓ Помощь и инструкции"),
+        # 🔧 АДМИН-КОМАНДЫ (видны только админу в личном чате)
+        BotCommand("stats", "📊 Статистика бота"),
+        BotCommand("check", "🔍 Проверить пользователя"),
+        BotCommand("addbalance", "💰 Начислить баланс"),
+        BotCommand("users", "📋 Список пользователей"),
+        BotCommand("broadcast", "📢 Рассылка")
     ])
 
 def main():
@@ -54,6 +62,13 @@ def main():
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("terms", terms_command))
     application.add_handler(CommandHandler("account", account_command_handler))
+
+    # 🔧 АДМИН-ПАНЕЛЬ - РЕГИСТРАЦИЯ КОМАНД
+    application.add_handler(CommandHandler("stats", admin_stats))
+    application.add_handler(CommandHandler("check", admin_check))
+    application.add_handler(CommandHandler("addbalance", admin_addbalance))
+    application.add_handler(CommandHandler("users", admin_users))
+    application.add_handler(CommandHandler("broadcast", admin_broadcast))
 
     # Глобальные обработчики для кнопок "Далее"
     application.add_handler(CallbackQueryHandler(reading_step_1_handler, pattern='^reading_step_1$'))

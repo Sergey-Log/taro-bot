@@ -11,8 +11,216 @@ from utils import (
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice,
     get_card_image_path, increment_reading_count, get_reading_count,
-    create_sbp_payment, check_payment_status
+    create_sbp_payment, check_payment_status,
+    get_all_users, get_total_users_count, get_total_readings_count
 )
+
+# ============================================================================
+# 🔧 АДМИН-ПАНЕЛЬ - НАСТРОЙКИ
+# ============================================================================
+
+# ЗАМЕНИТЕ НА ВАШ USER_ID (можно узнать через @userinfobot в Telegram)
+ADMIN_ID = 891543067  # ← Впишите сюда ваш числовой ID
+
+# Имя пользователя админа для проверки
+ADMIN_USERNAME = "jobphone_admin"
+
+def is_admin(user_id, username=None):
+    """Проверка, является ли пользователь админом"""
+    if user_id == ADMIN_ID:
+        return True
+    if username and username.lower() == ADMIN_USERNAME.lower():
+        return True
+    return False
+
+# ============================================================================
+# 🔧 АДМИН-КОМАНДЫ
+# ============================================================================
+
+async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📊 Статистика бота (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    total_users = get_total_users_count()
+    total_readings = get_total_readings_count()
+    
+    message = (
+        "📊 СТАТИСТИКА БОТА 📊\n\n"
+        f"👥 Всего пользователей: {total_users}\n"
+        f"🎴 Всего раскладов сделано: {total_readings}\n"
+        f"📅 Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}\n"
+    )
+    
+    await update.message.reply_text(message)
+
+async def admin_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🔍 Проверка баланса пользователя (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 1:
+        await update.message.reply_text(
+            "❌ Использование: /check <user_id>\n"
+            "Пример: /check 123456789"
+        )
+        return
+    
+    try:
+        check_user_id = int(context.args[0])
+        balance = get_balance(check_user_id)
+        user_data = get_user_data(check_user_id)
+        reading_count = get_reading_count(check_user_id)
+        referral_count = get_referral_count(check_user_id)
+        
+        message = (
+            f"🔍 ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ 🔍\n\n"
+            f"🆔 ID: {check_user_id}\n"
+            f"👤 Имя: {user_data['name'] if user_data else 'Не указано'}\n"
+            f"📅 Дата рождения: {user_data.get('birthdate', 'Не указана') if user_data else 'Не указана'}\n"
+            f"⚖️ Баланс: {balance} раскладов\n"
+            f"🎴 Всего раскладов: {reading_count}\n"
+            f"👥 Приглашено друзей: {referral_count}\n"
+        )
+        
+        await update.message.reply_text(message)
+        
+    except ValueError:
+        await update.message.reply_text("❌ Неверный формат user_id (должно быть число)")
+
+async def admin_addbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """💰 Начислить баланс пользователю (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text(
+            "❌ Использование: /addbalance <user_id> <amount>\n"
+            "Пример: /addbalance 123456789 5"
+        )
+        return
+    
+    try:
+        target_user_id = int(context.args[0])
+        amount = int(context.args[1])
+        
+        if amount <= 0:
+            await update.message.reply_text("❌ Сумма должна быть больше 0")
+            return
+        
+        from utils import increase_balance
+        increase_balance(target_user_id, amount)
+        
+        message = (
+            f"✅ Баланс успешно начислен!\n\n"
+            f"👤 Пользователь: {target_user_id}\n"
+            f"💰 Начислено: {amount} раскладов\n"
+            f"📅 Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+        )
+        
+        await update.message.reply_text(message)
+        
+        # Уведомить пользователя
+        try:
+            await context.bot.send_message(
+                chat_id=target_user_id,
+                text=f"🎉 Вам начислено {amount} раскладов!\n\nСпасибо за оплату! 💫"
+            )
+        except:
+            pass
+        
+    except ValueError:
+        await update.message.reply_text("❌ Неверный формат (user_id и amount должны быть числами)")
+
+async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📋 Список всех пользователей (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    users = get_all_users()
+    
+    if not users:
+        await update.message.reply_text("❌ Пользователи не найдены")
+        return
+    
+    message = "📋 СПИСОК ПОЛЬЗОВАТЕЛЕЙ 📋\n\n"
+    for i, (user_id, username, first_name, balance, created_at) in enumerate(users[:50], 1):
+        message += f"{i}. {first_name} (@{username or 'no_username'}) - ID: {user_id} - Баланс: {balance}\n"
+    
+    if len(users) > 50:
+        message += f"\n... и ещё {len(users) - 50} пользователей"
+    
+    await update.message.reply_text(message)
+
+async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📢 Рассылка всем пользователям (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "❌ Использование: /broadcast <текст сообщения>\n"
+            "Пример: /broadcast Привет! У нас акция!"
+        )
+        return
+    
+    message_text = " ".join(context.args)
+    users = get_all_users()
+    
+    if not users:
+        await update.message.reply_text("❌ Нет пользователей для рассылки")
+        return
+    
+    success_count = 0
+    fail_count = 0
+    
+    status_message = await update.message.reply_text(f"📢 Начало рассылки...\nВсего пользователей: {len(users)}")
+    
+    for user_id, username, first_name, balance, created_at in users:
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=f"📢 Сообщение от администратора:\n\n{message_text}"
+            )
+            success_count += 1
+        except:
+            fail_count += 1
+        
+        # Обновляем статус каждые 10 пользователей
+        if success_count % 10 == 0:
+            try:
+                await context.bot.edit_message_text(
+                    f"📢 Рассылка...\n✅ Отправлено: {success_count}\n❌ Ошибок: {fail_count}\n📊 Всего: {len(users)}",
+                    chat_id=status_message.chat_id,
+                    message_id=status_message.message_id
+                )
+            except:
+                pass
+    
+    await context.bot.edit_message_text(
+        f"✅ Рассылка завершена!\n\n✅ Успешно: {success_count}\n❌ Ошибок: {fail_count}\n📊 Всего: {len(users)}",
+        chat_id=status_message.chat_id,
+        message_id=status_message.message_id
+    )
+
+# ============================================================================
+# ОСНОВНЫЕ ФУНКЦИИ БОТА (без изменений)
+# ============================================================================
 
 ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE = range(5)
 
@@ -810,7 +1018,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
             f"\n🏦 Реквизиты для оплаты:\n"
             f"▫️ Банк: Райффайзенбанк.\n"
-            f"▫️ Номер карты: \n"
+            f"▫️ Номер карты: 2200300564643334 \n"
             f"▫️ Получатель: Сергей Л.\n"
             f"▫️ Сумма: {price} ₽.\n"
             f"\n✅ ПОСЛЕ ОПЛАТЫ:\n"
