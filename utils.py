@@ -750,7 +750,6 @@ def get_reading_count(user_id):
 
 def get_card_image_path(card_name):
     """Получить путь к изображению карты"""
-    import os
     CARD_IMAGE_FILES = {
         "Шут": "00_fool.jpg", "Маг": "01_magician.jpg", "Жрица": "02_high_priestess.jpg",
         "Императрица": "03_empress.jpg", "Император": "04_emperor.jpg", "Жрец": "05_hierophant.jpg",
