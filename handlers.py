@@ -375,20 +375,73 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
     
-    cards_text = format_reading_cards(
-        reading_data['cards'],
-        reading_data['user_name'],
-        reading_data['positions'],
-        reading_data['spread_id']
-    )
+    cards = reading_data['cards']
+    positions = reading_data['positions']
     
-    keyboard = [
-        [InlineKeyboardButton("⬅️ Назад", callback_data='back_to_spread_choice')],
-        [InlineKeyboardButton("➡️ Далее", callback_data='reading_step_2')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    # 🔧 ОТПРАВЛЯЕМ КАЖДУЮ КАРТУ ОТДЕЛЬНЫМ СООБЩЕНИЕМ С КАРТИНКОЙ И ОПИСАНИЕМ
+    for idx, card_data in enumerate(cards):
+        card_name = card_data[0]
+        interpretation = card_data[1]
+        position_name = positions[idx] if idx < len(positions) else f"Карта {idx + 1}"
+        
+        # Формируем текст для каждой карты
+        card_caption = f"🎴 {position_name}\n"
+        card_caption += "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        card_caption += f"✨ КАРТА: {card_name}\n"
+        card_caption += f"💫 ЗНАЧЕНИЕ: {interpretation['short']}\n"
+        
+        # Для некоторых раскладов добавляем интерпретации
+        spread_id = reading_data['spread_id']
+        if spread_id not in ['celtic_cross', 'past_present_future']:
+            if spread_id == 'relationship':
+                card_caption += f"\n❤️‍🔥 В ЛЮБВИ: {interpretation['love']}"
+            elif spread_id == 'career':
+                card_caption += f"\n💼 В КАРЬЕРЕ: {interpretation['career']}"
+            else:
+                card_caption += f"\n❤️‍🔥 В ЛЮБВИ: {interpretation['love']}"
+                card_caption += f"\n💼 В КАРЬЕРЕ: {interpretation['career']}"
+        
+        # Отправляем изображение карты
+        image_path = get_card_image_path(card_name)
+        if image_path and os.path.exists(image_path):
+            with open(image_path, 'rb') as photo:
+                if idx == len(cards) - 1:
+                    # Последняя карта — с кнопкой "Далее"
+                    keyboard = [[InlineKeyboardButton("➡️ Далее к совету", callback_data='reading_step_2')]]
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    await context.bot.send_photo(
+                        chat_id=query.message.chat_id,
+                        photo=photo,
+                        caption=card_caption,
+                        reply_markup=reply_markup
+                    )
+                else:
+                    await context.bot.send_photo(
+                        chat_id=query.message.chat_id,
+                        photo=photo,
+                        caption=card_caption
+                    )
+        else:
+            if idx == len(cards) - 1:
+                keyboard = [[InlineKeyboardButton("➡️ Далее к совету", callback_data='reading_step_2')]]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                await context.bot.send_message(
+                    chat_id=query.message.chat_id,
+                    text=card_caption,
+                    reply_markup=reply_markup
+                )
+            else:
+                await context.bot.send_message(
+                    chat_id=query.message.chat_id,
+                    text=card_caption
+                )
     
-    await query.edit_message_text(text=cards_text, reply_markup=reply_markup)
+    # Удаляем сообщение с интро
+    try:
+        await query.message.delete()
+    except:
+        pass
+    
     return READING_CARDS
 
 async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -401,48 +454,21 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     cards = reading_data['cards']
-    positions = reading_data['positions']
     spread_id = reading_data['spread_id']
-    user_name = reading_data['user_name']
     
-    # 🔧 ШАГ 1: ОТПРАВЛЯЕМ ВСЕ ИЗОБРАЖЕНИЯ КАРТ (без текста)
-    for idx, card_data in enumerate(cards):
-        card_name = card_data[0]
-        position_name = positions[idx] if idx < len(positions) else f"Карта {idx + 1}"
-        image_path = get_card_image_path(card_name)
-        
-        if image_path and os.path.exists(image_path):
-            with open(image_path, 'rb') as photo:
-                await context.bot.send_photo(
-                    chat_id=query.message.chat_id,
-                    photo=photo,
-                    caption=f"🎴 {position_name}\n✨ Карта: {card_name}"
-                )
-        else:
-            await context.bot.send_message(
-                chat_id=query.message.chat_id,
-                text=f"🎴 {position_name}\n✨ Карта: {card_name}"
-            )
-    
-    # 🔧 ШАГ 2: ОТПРАВЛЯЕМ ИНТЕРПРЕТАЦИЮ КАРТ (текст с описанием)
-    cards_interpretation = format_reading_cards(
-        cards,
-        user_name,
-        positions,
-        spread_id
-    )
-    await context.bot.send_message(
-        chat_id=query.message.chat_id,
-        text=cards_interpretation
-    )
-    
-    # 🔧 ШАГ 3: ОТПРАВЛЯЕМ СОВЕТ С КНОПКАМИ МЕНЮ
+    # 🔧 ОТПРАВЛЯЕМ СОВЕТ БЕЗ КАРТ (только текст)
     advice_text = format_reading_advice(cards, spread_id)
     
+    # Сохраняем расклад для возможности сохранения
     if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
     
-    full_reading = cards_interpretation + "\n\n" + advice_text
+    full_reading = format_reading_cards(
+        cards,
+        reading_data['user_name'],
+        reading_data['positions'],
+        spread_id
+    ) + "\n\n" + advice_text
     
     context.user_data['pending_readings'][query.from_user.id] = (
         cards,
@@ -451,6 +477,7 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     increment_reading_count(query.from_user.id)
     
+    # Кнопки меню после совета
     keyboard = [
         [InlineKeyboardButton("⬅️ Назад к картам", callback_data='back_to_cards')],
         [InlineKeyboardButton("💾 Сохранить расклад", callback_data='save_last_reading')],
