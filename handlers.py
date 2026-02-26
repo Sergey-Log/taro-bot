@@ -400,25 +400,52 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text="❌ Ошибка: данные расклада утеряны. Начните заново.")
         return
     
-    advice_text = format_reading_advice(
-        reading_data['cards'],
-        reading_data['spread_id']
+    cards = reading_data['cards']
+    positions = reading_data['positions']
+    spread_id = reading_data['spread_id']
+    user_name = reading_data['user_name']
+    
+    # 🔧 ШАГ 1: ОТПРАВЛЯЕМ ВСЕ ИЗОБРАЖЕНИЯ КАРТ (без текста)
+    for idx, card_data in enumerate(cards):
+        card_name = card_data[0]
+        position_name = positions[idx] if idx < len(positions) else f"Карта {idx + 1}"
+        image_path = get_card_image_path(card_name)
+        
+        if image_path and os.path.exists(image_path):
+            with open(image_path, 'rb') as photo:
+                await context.bot.send_photo(
+                    chat_id=query.message.chat_id,
+                    photo=photo,
+                    caption=f"🎴 {position_name}\n✨ Карта: {card_name}"
+                )
+        else:
+            await context.bot.send_message(
+                chat_id=query.message.chat_id,
+                text=f"🎴 {position_name}\n✨ Карта: {card_name}"
+            )
+    
+    # 🔧 ШАГ 2: ОТПРАВЛЯЕМ ИНТЕРПРЕТАЦИЮ КАРТ (текст с описанием)
+    cards_interpretation = format_reading_cards(
+        cards,
+        user_name,
+        positions,
+        spread_id
     )
+    await context.bot.send_message(
+        chat_id=query.message.chat_id,
+        text=cards_interpretation
+    )
+    
+    # 🔧 ШАГ 3: ОТПРАВЛЯЕМ СОВЕТ С КНОПКАМИ МЕНЮ
+    advice_text = format_reading_advice(cards, spread_id)
     
     if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
     
-    full_reading = (
-        format_reading_cards(
-            reading_data['cards'],
-            reading_data['user_name'],
-            reading_data['positions'],
-            reading_data['spread_id']
-        ) + "\n\n" + advice_text
-    )
+    full_reading = cards_interpretation + "\n\n" + advice_text
     
     context.user_data['pending_readings'][query.from_user.id] = (
-        reading_data['cards'],
+        cards,
         full_reading
     )
     
@@ -433,34 +460,11 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    # 🔧 ОТПРАВКА С ИЗОБРАЖЕНИЯМИ ВСЕХ КАРТ РАСКЛАДА
-    for idx, card_data in enumerate(reading_data['cards']):
-        card_name = card_data[0]
-        image_path = get_card_image_path(card_name)
-        
-        if image_path and os.path.exists(image_path):
-            with open(image_path, 'rb') as photo:
-                # Кнопки показываем только после последней карты
-                if idx == len(reading_data['cards']) - 1:
-                    await context.bot.send_photo(
-                        chat_id=query.message.chat_id,
-                        photo=photo,
-                        caption=f"✨ Карта {idx + 1}: {card_name}\n\n{advice_text}",
-                        reply_markup=reply_markup
-                    )
-                else:
-                    await context.bot.send_photo(
-                        chat_id=query.message.chat_id,
-                        photo=photo,
-                        caption=f"✨ Карта {idx + 1}: {card_name}"
-                    )
-        else:
-            if idx == len(reading_data['cards']) - 1:
-                await context.bot.send_message(
-                    chat_id=query.message.chat_id,
-                    text=f"✨ Карта {idx + 1}: {card_name}\n\n{advice_text}",
-                    reply_markup=reply_markup
-                )
+    await context.bot.send_message(
+        chat_id=query.message.chat_id,
+        text=advice_text,
+        reply_markup=reply_markup
+    )
     
     try:
         await query.message.delete()
