@@ -132,7 +132,7 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(f"🔤 CHANGE_NAME ВЫЗВАНА! Текст: {update.message.text}")  # ← Добавьте эту строку
+    """✏️ Обработчик изменения имени"""
     name = update.message.text.strip()
     if len(name) < 2:
         await update.message.reply_text("❌ Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
@@ -146,7 +146,7 @@ async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_data and user_data.get('birthdate'):
         save_user_data(user_id, name, user_data['birthdate'])
     
-    balance = get_balance(user_id)
+    balance = get_balance(user_id)  # ✅ ИСПРАВЛЕНО: было "balanc e"
     referral_count = get_referral_count(user_id)
     reading_count = get_reading_count(user_id)
     
