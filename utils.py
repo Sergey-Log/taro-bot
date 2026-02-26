@@ -274,7 +274,6 @@ def get_daily_card(user_id):
     return result if result else None
 
 def increment_reading_count(user_id):
-    """Увеличить счётчик раскладов пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('''
@@ -288,7 +287,6 @@ def increment_reading_count(user_id):
     conn.close()
 
 def get_reading_count(user_id):
-    """Получить количество раскладов пользователя"""
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT total_readings FROM reading_stats WHERE user_id = ?', (user_id,))
@@ -297,7 +295,6 @@ def get_reading_count(user_id):
     return result[0] if result else 0
 
 def get_card_image_path(card_name):
-    """Получить путь к изображению карты"""
     CARD_IMAGE_FILES = {
         "Шут": "00_fool.jpg", "Маг": "01_magician.jpg", "Жрица": "02_high_priestess.jpg",
         "Императрица": "03_empress.jpg", "Император": "04_emperor.jpg", "Жрец": "05_hierophant.jpg",

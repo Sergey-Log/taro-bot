@@ -12,7 +12,9 @@ from handlers import (
 from utils import init_db
 
 load_dotenv()
+
 TOKEN = os.getenv("BOT_TOKEN")
+
 app = Flask(__name__)
 
 @app.route('/')
@@ -59,11 +61,11 @@ def main():
     application.add_handler(CallbackQueryHandler(button_handler))
 
     print("✅ Бот запущен v6.0")
-    
+
     # 🔧 ИСПРАВЛЕНИЕ CONFLICT ERROR:
     application.run_polling(
         allowed_updates=['message', 'callback_query'],
-        drop_pending_updates=True  # ← КЛЮЧЕВОЕ: очищает старые обновления
+        drop_pending_updates=True
     )
 
 def run_flask():

@@ -13,7 +13,7 @@ from utils import (
     get_card_image_path, increment_reading_count, get_reading_count
 )
 
-ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE, CHANGING_NAME = range(6)
+ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE = range(5)
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -126,40 +126,6 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
         [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("🔮 Выберите действие:", reply_markup=reply_markup)
-    return ConversationHandler.END
-
-async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """✏️ Обработчик изменения имени"""
-    name = update.message.text.strip()
-    if len(name) < 2:
-        await update.message.reply_text("❌ Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
-        return CHANGING_NAME
-    if not re.match(r'^[a-zA-Zа-яА-ЯёЁ\s]+$', name):
-        await update.message.reply_text("❌ Имя может содержать только буквы и пробелы. Попробуйте ещё раз:")
-        return CHANGING_NAME
-    
-    user_id = update.effective_user.id
-    user_data = get_user_data(user_id)
-    if user_data and user_data.get('birthdate'):
-        save_user_data(user_id, name, user_data['birthdate'])
-    
-    balance = get_balance(user_id)  # ✅ ИСПРАВЛЕНО: было "balanc e"
-    referral_count = get_referral_count(user_id)
-    reading_count = get_reading_count(user_id)
-    
-    await update.message.reply_text(
-        f"✅ Имя изменено на: {name}!\n\n"
-        f"✨ Ваш баланс: {balance} раскладов\n"
-        f"🎴 Всего раскладов: {reading_count}\n"
-        f"👥 Друзей: {referral_count}"
-    )
-    
-    keyboard = [
-        [InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')],
-        [InlineKeyboardButton("👤 Аккаунт", callback_data='account')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("🔮 Выберите действие:", reply_markup=reply_markup)
@@ -311,11 +277,9 @@ async def account_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"\n⚖️ Баланс: {balance} раскладов\n"
         f"🎴 Всего раскладов сделано: {reading_count}\n"
         f"👥 Приглашено друзей: {referral_count}\n"
-        f"\n💫 Хотите изменить имя? Нажмите кнопку ниже!"
     )
     
     keyboard = [
-        [InlineKeyboardButton("✏️ Изменить имя", callback_data='change_name')],
         [InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -378,19 +342,16 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cards = reading_data['cards']
     positions = reading_data['positions']
     
-    # 🔧 ОТПРАВЛЯЕМ КАЖДУЮ КАРТУ ОТДЕЛЬНЫМ СООБЩЕНИЕМ С КАРТИНКОЙ И ОПИСАНИЕМ
     for idx, card_data in enumerate(cards):
         card_name = card_data[0]
         interpretation = card_data[1]
         position_name = positions[idx] if idx < len(positions) else f"Карта {idx + 1}"
         
-        # Формируем текст для каждой карты
         card_caption = f"🎴 {position_name}\n"
         card_caption += "━━━━━━━━━━━━━━━━━━━━━━━━\n"
         card_caption += f"✨ КАРТА: {card_name}\n"
         card_caption += f"💫 ЗНАЧЕНИЕ: {interpretation['short']}\n"
         
-        # Для некоторых раскладов добавляем интерпретации
         spread_id = reading_data['spread_id']
         if spread_id not in ['celtic_cross', 'past_present_future']:
             if spread_id == 'relationship':
@@ -401,12 +362,10 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 card_caption += f"\n❤️‍🔥 В ЛЮБВИ: {interpretation['love']}"
                 card_caption += f"\n💼 В КАРЬЕРЕ: {interpretation['career']}"
         
-        # Отправляем изображение карты
         image_path = get_card_image_path(card_name)
         if image_path and os.path.exists(image_path):
             with open(image_path, 'rb') as photo:
                 if idx == len(cards) - 1:
-                    # Последняя карта — с кнопкой "Далее"
                     keyboard = [[InlineKeyboardButton("➡️ Далее к совету", callback_data='reading_step_2')]]
                     reply_markup = InlineKeyboardMarkup(keyboard)
                     await context.bot.send_photo(
@@ -436,7 +395,6 @@ async def reading_step_1(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     text=card_caption
                 )
     
-    # Удаляем сообщение с интро
     try:
         await query.message.delete()
     except:
@@ -456,10 +414,8 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cards = reading_data['cards']
     spread_id = reading_data['spread_id']
     
-    # 🔧 ОТПРАВЛЯЕМ СОВЕТ БЕЗ КАРТ (только текст)
     advice_text = format_reading_advice(cards, spread_id)
     
-    # Сохраняем расклад для возможности сохранения
     if 'pending_readings' not in context.user_data:
         context.user_data['pending_readings'] = {}
     
@@ -477,7 +433,6 @@ async def reading_step_2(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     increment_reading_count(query.from_user.id)
     
-    # Кнопки меню после совета
     keyboard = [
         [InlineKeyboardButton("⬅️ Назад к картам", callback_data='back_to_cards')],
         [InlineKeyboardButton("💾 Сохранить расклад", callback_data='save_last_reading')],
@@ -594,23 +549,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"\n⚖️ Баланс: {balance} раскладов\n"
             f"🎴 Всего раскладов сделано: {reading_count}\n"
             f"👥 Приглашено друзей: {referral_count}\n"
-            f"\n💫 Хотите изменить имя? Нажмите кнопку ниже!"
         )
         
         keyboard = [
-            [InlineKeyboardButton("✏️ Изменить имя", callback_data='change_name')],
             [InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         await query.edit_message_text(text=message, reply_markup=reply_markup)
         return
-    
-    if query.data == 'change_name':
-        await query.edit_message_text(
-            text="✏️ Введите новое имя:\n\n"
-                 "💫 Имя может содержать только буквы и пробелы."
-        )
-        return CHANGING_NAME
     
     user_data = get_user_data(user_id)
     if not user_data or not user_data.get('name') or not user_data.get('birthdate'):
@@ -944,8 +890,7 @@ start_handler = ConversationHandler(
         ASKING_BIRTHDATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_birthdate)],
         READING_INTRO: [CallbackQueryHandler(reading_step_1, pattern='^reading_step_1$')],
         READING_CARDS: [CallbackQueryHandler(reading_step_2, pattern='^reading_step_2$')],
-        READING_ADVICE: [CallbackQueryHandler(button_handler)],
-        CHANGING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, change_name)]
+        READING_ADVICE: [CallbackQueryHandler(button_handler)]
     },
     fallbacks=[CommandHandler("start", _start)],
     allow_reentry=True,
