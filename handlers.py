@@ -132,7 +132,7 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def change_name(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """✏️ Обработчик изменения имени"""
+    print(f"🔤 CHANGE_NAME ВЫЗВАНА! Текст: {update.message.text}")  # ← Добавьте эту строку
     name = update.message.text.strip()
     if len(name) < 2:
         await update.message.reply_text("❌ Имя должно быть не менее 2 символов. Попробуйте ещё раз:")
