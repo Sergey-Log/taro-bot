@@ -47,12 +47,10 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ {user_data['name']}, ваш баланс: {balance} раскладов"
     
     keyboard = [
-        [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
         [InlineKeyboardButton("👤 Аккаунт", callback_data='account')],
-        [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -119,12 +117,10 @@ async def ask_birthdate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     keyboard = [
-        [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
         [InlineKeyboardButton("👤 Аккаунт", callback_data='account')],
-        [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -226,8 +222,6 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     keyboard = [
         [InlineKeyboardButton("💳 Купить расклады", callback_data='buy_packs')],
-        [InlineKeyboardButton("💫 Пригласить друга", callback_data='referral')],
-        [InlineKeyboardButton("📺 Подписаться (+3)", callback_data='subscribe')],
         [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -237,9 +231,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
         "❓ ПОМОЩЬ ❓\n"
         "\n✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
-        "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день)\n"
         "• 🎴 Сделать расклад — подробный расклад из 3+ карт (списывается с баланса)\n"
-        "• 💾 Сохранить расклад — сохраните результат в одну из 3 ячеек\n"
+        "• 🗄️ Мои расклады — сохраните результат в одну из 3 ячеек\n"
+        "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день, в меню «Сделать расклад»)\n"
         "\n🗄️ СОХРАНЕНИЕ РАСКЛАДОВ:\n"
         "• У вас есть 3 ячейки для сохранения раскладов.\n"
         "• Расклады НЕ сохраняются автоматически — только по вашему выбору.\n"
@@ -280,6 +274,8 @@ async def account_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     keyboard = [
+        [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
+        [InlineKeyboardButton("🎁 Пригласить друга", callback_data='referral')],
         [InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -552,6 +548,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         keyboard = [
+            [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
+            [InlineKeyboardButton("🎁 Пригласить друга", callback_data='referral')],
             [InlineKeyboardButton("🔮 Главное меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -652,8 +650,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         keyboard = [
             [InlineKeyboardButton("💳 Купить расклады", callback_data='buy_packs')],
-            [InlineKeyboardButton("💫 Пригласить друга", callback_data='referral')],
-            [InlineKeyboardButton("📺 Подписаться (+3)", callback_data='subscribe')],
             [InlineKeyboardButton("⬅️ Меню", callback_data='back_to_menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -804,9 +800,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message = (
             "❓ ПОМОЩЬ ❓\n"
             "\n✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
-            "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день)\n"
             "• 🎴 Сделать расклад — подробный расклад из 3+ карт (списывается с баланса)\n"
-            "• 💾 Сохранить расклад — сохраните результат в одну из 3 ячеек\n"
+            "• 🗄️ Мои расклады — сохраните результат в одну из 3 ячеек\n"
+            "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день, в меню «Сделать расклад»)\n"
             "\n🗄️ СОХРАНЕНИЕ РАСКЛАДОВ:\n"
             "• У вас есть 3 ячейки для сохранения раскладов.\n"
             "• Расклады НЕ сохраняются автоматически — только по вашему выбору.\n"
@@ -835,12 +831,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         balance = get_balance(user_id)
         message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ {user_data['name']}, ваш баланс: {balance} раскладов"
         keyboard = [
-            [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
             [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
+            [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
             [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
             [InlineKeyboardButton("👤 Аккаунт", callback_data='account')],
-            [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
-            [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
             [InlineKeyboardButton("❓ Помощь", callback_data='help')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -871,13 +865,16 @@ async def choose_spread(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     spreads = get_spread_options()
-    spreads.pop('daily', None)
     
     message = "🎴 ВЫБЕРИТЕ ТИП РАСКЛАДА 🎴\n\n"
     keyboard = []
     
+    # 🔧 ДОБАВЛЕНА КАРТА ДНЯ В СПИСОК РАСКЛАДОВ
+    keyboard.append([InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')])
+    
     for spread_id, spread_info in spreads.items():
-        keyboard.append([InlineKeyboardButton(spread_info['name'], callback_data=f'spread_{spread_id}')])
+        if spread_id != 'daily':
+            keyboard.append([InlineKeyboardButton(spread_info['name'], callback_data=f'spread_{spread_id}')])
     
     keyboard.append([InlineKeyboardButton("⬅️ Назад", callback_data='back_to_menu')])
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -914,12 +911,10 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = f"🔮 ДОБРО ПОЖАЛОВАТЬ В МИР ТАРО! 🔮\n✨ {user_data['name']}, ваш баланс: {balance} раскладов"
     
     keyboard = [
-        [InlineKeyboardButton("🌅 Карта дня (бесплатно)", callback_data='daily_card')],
         [InlineKeyboardButton("🎴 Сделать расклад", callback_data='do_tarot')],
+        [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton(f"⚖️ Баланс: {balance}", callback_data='balance')],
         [InlineKeyboardButton("👤 Аккаунт", callback_data='account')],
-        [InlineKeyboardButton("📺 Подписка (+3)", callback_data='subscribe')],
-        [InlineKeyboardButton("🗄️ Мои расклады", callback_data='saved_readings')],
         [InlineKeyboardButton("❓ Помощь", callback_data='help')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
