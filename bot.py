@@ -7,7 +7,7 @@ import threading
 from handlers import (
     start_handler, button_handler, history_command, terms_command,
     daily_command, balance_command, help_command, menu_command,
-    reading_step_1_handler, reading_step_2_handler
+    reading_step_1_handler, reading_step_2_handler, account_command_handler
 )
 from utils import init_db
 
@@ -17,7 +17,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def health_check():
-    return "✅ v5.14"
+    return "✅ v6.0"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -29,6 +29,9 @@ async def post_init(application):
         BotCommand("menu", "🏠 Главное меню"),
         BotCommand("daily", "🌅 Карта дня (бесплатно)"),
         BotCommand("balance", "⚖️ Проверить баланс"),
+        BotCommand("account", "👤 Мой аккаунт"),
+        BotCommand("history", "🗄️ Мои расклады"),
+        BotCommand("terms", "📄 Условия оплаты"),
         BotCommand("help", "❓ Помощь и инструкции")
     ])
 
@@ -48,18 +51,19 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("history", history_command))
     application.add_handler(CommandHandler("terms", terms_command))
+    application.add_handler(CommandHandler("account", account_command_handler))
 
     # Глобальные обработчики для кнопок "Далее"
     application.add_handler(CallbackQueryHandler(reading_step_1_handler, pattern='^reading_step_1$'))
     application.add_handler(CallbackQueryHandler(reading_step_2_handler, pattern='^reading_step_2$'))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    print("✅ Бот запущен v5.14")
+    print("✅ Бот запущен v6.0")
     
     # 🔧 ИСПРАВЛЕНИЕ CONFLICT ERROR:
     application.run_polling(
         allowed_updates=['message', 'callback_query'],
-        drop_pending_updates=True  # ← Очищает очередь старых обновлений
+        drop_pending_updates=True  # ← КЛЮЧЕВОЕ: очищает старые обновления
     )
 
 def run_flask():

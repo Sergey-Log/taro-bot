@@ -706,3 +706,64 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
     result += "🌙 Таро — инструмент самопознания 💫\n"
 
     return result
+
+# ============================================================================
+# 🔧 ДОБАВЬТЕ ЭТИ ФУНКЦИИ В КОНЕЦ utils.py
+# ============================================================================
+
+def increment_reading_count(user_id):
+    """Увеличить счётчик раскладов пользователя"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reading_stats (
+            user_id INTEGER PRIMARY KEY,
+            total_readings INTEGER DEFAULT 0,
+            last_reading TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('''
+        INSERT OR IGNORE INTO reading_stats (user_id, total_readings) VALUES (?, 0)
+    ''', (user_id,))
+    cursor.execute('''
+        UPDATE reading_stats SET total_readings = total_readings + 1, last_reading = CURRENT_TIMESTAMP
+        WHERE user_id = ?
+    ''', (user_id,))
+    conn.commit()
+    conn.close()
+
+def get_reading_count(user_id):
+    """Получить количество раскладов пользователя"""
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reading_stats (
+            user_id INTEGER PRIMARY KEY,
+            total_readings INTEGER DEFAULT 0,
+            last_reading TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    cursor.execute('SELECT total_readings FROM reading_stats WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else 0
+
+def get_card_image_path(card_name):
+    """Получить путь к изображению карты"""
+    import os
+    CARD_IMAGE_FILES = {
+        "Шут": "00_fool.jpg", "Маг": "01_magician.jpg", "Жрица": "02_high_priestess.jpg",
+        "Императрица": "03_empress.jpg", "Император": "04_emperor.jpg", "Жрец": "05_hierophant.jpg",
+        "Влюблённые": "06_lovers.jpg", "Колесница": "07_chariot.jpg", "Сила": "08_strength.jpg",
+        "Отшельник": "09_hermit.jpg", "Колесо Фортуны": "10_wheel_of_fortune.jpg",
+        "Справедливость": "11_justice.jpg", "Повешенный": "12_hanged_man.jpg", "Смерть": "13_death.jpg",
+        "Умеренность": "14_temperance.jpg", "Дьявол": "15_devil.jpg", "Башня": "16_tower.jpg",
+        "Звезда": "17_star.jpg", "Луна": "18_moon.jpg", "Солнце": "19_sun.jpg",
+        "Суд": "20_judgment.jpg", "Мир": "21_world.jpg"
+    }
+    filename = CARD_IMAGE_FILES.get(card_name)
+    if filename:
+        path = os.path.join("tarot_cards", filename)
+        if os.path.exists(path):
+            return path
+    return None
