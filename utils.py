@@ -7,80 +7,81 @@ from datetime import datetime, timedelta
 def init_db():
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
+    
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT,
-            first_name TEXT,
-            balance INTEGER DEFAULT 1,
-            subscribed BOOLEAN DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS users (
+        user_id INTEGER PRIMARY KEY,
+        username TEXT,
+        first_name TEXT,
+        balance INTEGER DEFAULT 1,
+        subscribed BOOLEAN DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
     ''')
-
+    
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS referrals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            referrer_id INTEGER,
-            referred_id INTEGER,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS referrals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        referrer_id INTEGER,
+        referred_id INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
     ''')
-
+    
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS saved_readings (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            slot INTEGER,
-            cards TEXT,
-            interpretation TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, slot)
-        )
+    CREATE TABLE IF NOT EXISTS saved_readings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        slot INTEGER,
+        cards TEXT,
+        interpretation TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, slot)
+    )
     ''')
-
+    
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            amount_rub REAL,
-            pack_size INTEGER,
-            crypto_amount REAL,
-            crypto_currency TEXT,
-            payment_id TEXT UNIQUE,
-            status TEXT DEFAULT 'waiting',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            completed_at TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        amount_rub REAL,
+        pack_size INTEGER,
+        crypto_amount REAL,
+        crypto_currency TEXT,
+        payment_id TEXT UNIQUE,
+        status TEXT DEFAULT 'waiting',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP
+    )
     ''')
-
+    
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_data (
-            user_id INTEGER PRIMARY KEY,
-            name TEXT,
-            birthdate TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS user_data (
+        user_id INTEGER PRIMARY KEY,
+        name TEXT,
+        birthdate TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
     ''')
-
+    
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS daily_card (
-            user_id INTEGER PRIMARY KEY,
-            last_used DATE DEFAULT CURRENT_DATE,
-            card_name TEXT,
-            interpretation TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS daily_card (
+        user_id INTEGER PRIMARY KEY,
+        last_used DATE DEFAULT CURRENT_DATE,
+        card_name TEXT,
+        interpretation TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
     ''')
-
+    
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS reading_stats (
-            user_id INTEGER PRIMARY KEY,
-            total_readings INTEGER DEFAULT 0,
-            last_reading TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+    CREATE TABLE IF NOT EXISTS reading_stats (
+        user_id INTEGER PRIMARY KEY,
+        total_readings INTEGER DEFAULT 0,
+        last_reading TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
     ''')
-
+    
     conn.commit()
     conn.close()
 
@@ -190,8 +191,8 @@ def create_payment(user_id, amount_rub, pack_size, payment_id, crypto_currency, 
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT INTO payments (user_id, amount_rub, pack_size, payment_id, crypto_currency, crypto_amount)
-        VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO payments (user_id, amount_rub, pack_size, payment_id, crypto_currency, crypto_amount)
+    VALUES (?, ?, ?, ?, ?, ?)
     ''', (user_id, amount_rub, pack_size, payment_id, crypto_currency, crypto_amount))
     conn.commit()
     conn.close()
@@ -216,8 +217,8 @@ def save_user_data(user_id, name, birthdate):
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT OR REPLACE INTO user_data (user_id, name, birthdate, updated_at)
-        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT OR REPLACE INTO user_data (user_id, name, birthdate, updated_at)
+    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
     ''', (user_id, name, birthdate))
     conn.commit()
     conn.close()
@@ -257,8 +258,8 @@ def save_daily_card(user_id, card_name, interpretation):
     cursor = conn.cursor()
     today = datetime.now().date().isoformat()
     cursor.execute('''
-        INSERT OR REPLACE INTO daily_card (user_id, last_used, card_name, interpretation, created_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    INSERT OR REPLACE INTO daily_card (user_id, last_used, card_name, interpretation, created_at)
+    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
     ''', (user_id, today, card_name, interpretation))
     conn.commit()
     conn.close()
@@ -277,11 +278,11 @@ def increment_reading_count(user_id):
     conn = sqlite3.connect('tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('''
-        INSERT OR IGNORE INTO reading_stats (user_id, total_readings) VALUES (?, 0)
+    INSERT OR IGNORE INTO reading_stats (user_id, total_readings) VALUES (?, 0)
     ''', (user_id,))
     cursor.execute('''
-        UPDATE reading_stats SET total_readings = total_readings + 1, last_reading = CURRENT_TIMESTAMP
-        WHERE user_id = ?
+    UPDATE reading_stats SET total_readings = total_readings + 1, last_reading = CURRENT_TIMESTAMP
+    WHERE user_id = ?
     ''', (user_id,))
     conn.commit()
     conn.close()
@@ -313,10 +314,6 @@ def get_card_image_path(card_name):
         if os.path.exists(path):
             return path
     return None
-
-# ============================================================================
-# ДАННЫЕ КАРТ ТАРО (22 Старших Аркана)
-# ============================================================================
 
 MAJOR_ARCANA = {
     "Шут": {
@@ -534,7 +531,6 @@ def format_reading_cards(cards, user_name, positions, spread_id):
         raise ValueError(f"Несоответствие позиций ({len(positions)}) и карт ({len(cards)})")
     result = f"🎴 КАРТЫ РАСКЛАДА ДЛЯ {user_name.upper()}\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-
     for i, (pos, (name, interpretation)) in enumerate(zip(positions, cards)):
         result += f"{pos}\n"
         result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -551,7 +547,7 @@ def format_reading_cards(cards, user_name, positions, spread_id):
             result += f"❤️‍🔥 В ЛЮБВИ: {interpretation['love']}\n"
             result += f"💼 В КАРЬЕРЕ: {interpretation['career']}\n\n"
 
-    result += "\n👇 Нажмите «Далее», чтобы получить персональный совет от Таро: "
+    result += "\n👇 Нажмите «Далее», чтобы получить персональный совет от Таро:"
     return result
 
 def format_reading_advice(cards, spread_id):
@@ -560,7 +556,6 @@ def format_reading_advice(cards, spread_id):
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
     if spread_id in ['celtic_cross', 'past_present_future']:
         advice_parts = []
-        
         if "Шут" in card_names or "Маг" in card_names:
             advice_parts.append("✨ Вы находитесь на пороге новых возможностей. Доверяйте своей интуиции и не бойтесь делать первый шаг — вселенная поддерживает ваши начинания.")
         
@@ -679,7 +674,6 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
             ]
         else:
             positions = [f"🎴 КАРТА {i+1}" for i in range(count)]
-    
     result = f"🔮 ПЕРСОНАЛИЗИРОВАННЫЙ РАСКЛАД ДЛЯ {user_name.upper()} 🔮\n"
     result += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
 
@@ -706,63 +700,3 @@ def format_reading(cards, user_name="Друг", positions=None, spread_id=None):
     result += "🌙 Таро — инструмент самопознания 💫\n"
 
     return result
-
-# ============================================================================
-# 🔧 ДОБАВЬТЕ ЭТИ ФУНКЦИИ В КОНЕЦ utils.py
-# ============================================================================
-
-def increment_reading_count(user_id):
-    """Увеличить счётчик раскладов пользователя"""
-    conn = sqlite3.connect('tarot_bot.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS reading_stats (
-            user_id INTEGER PRIMARY KEY,
-            total_readings INTEGER DEFAULT 0,
-            last_reading TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    cursor.execute('''
-        INSERT OR IGNORE INTO reading_stats (user_id, total_readings) VALUES (?, 0)
-    ''', (user_id,))
-    cursor.execute('''
-        UPDATE reading_stats SET total_readings = total_readings + 1, last_reading = CURRENT_TIMESTAMP
-        WHERE user_id = ?
-    ''', (user_id,))
-    conn.commit()
-    conn.close()
-
-def get_reading_count(user_id):
-    """Получить количество раскладов пользователя"""
-    conn = sqlite3.connect('tarot_bot.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS reading_stats (
-            user_id INTEGER PRIMARY KEY,
-            total_readings INTEGER DEFAULT 0,
-            last_reading TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    cursor.execute('SELECT total_readings FROM reading_stats WHERE user_id = ?', (user_id,))
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else 0
-
-def get_card_image_path(card_name):
-    """Получить путь к изображению карты"""
-    CARD_IMAGE_FILES = {
-        "Шут": "00_fool.jpg", "Маг": "01_magician.jpg", "Жрица": "02_high_priestess.jpg",
-        "Императрица": "03_empress.jpg", "Император": "04_emperor.jpg", "Жрец": "05_hierophant.jpg",
-        "Влюблённые": "06_lovers.jpg", "Колесница": "07_chariot.jpg", "Сила": "08_strength.jpg",
-        "Отшельник": "09_hermit.jpg", "Колесо Фортуны": "10_wheel_of_fortune.jpg",
-        "Справедливость": "11_justice.jpg", "Повешенный": "12_hanged_man.jpg", "Смерть": "13_death.jpg",
-        "Умеренность": "14_temperance.jpg", "Дьявол": "15_devil.jpg", "Башня": "16_tower.jpg",
-        "Звезда": "17_star.jpg", "Луна": "18_moon.jpg", "Солнце": "19_sun.jpg",
-        "Суд": "20_judgment.jpg", "Мир": "21_world.jpg"
-    }
-    filename = CARD_IMAGE_FILES.get(card_name)
-    if filename:
-        path = os.path.join("tarot_cards", filename)
-        if os.path.exists(path):
-            return path
-    return None
