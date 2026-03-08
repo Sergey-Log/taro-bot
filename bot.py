@@ -8,8 +8,9 @@ from handlers import (
     start_handler, button_handler, history_command, terms_command,
     daily_command, balance_command, help_command, menu_command,
     reading_step_1_handler, reading_step_2_handler, account_command_handler,
-    # 🔧 АДМИН-ПАНЕЛЬ - ИМПОРТ КОМАНД
-    admin_stats, admin_check, admin_addbalance, admin_users, admin_broadcast
+    # 🔧 АДМИН-ПАНЕЛЬ - НОВЫЕ КОМАНДЫ
+    admin_stats, admin_check, admin_addbalance, admin_users, admin_broadcast,
+    admin_ban, admin_unban, admin_send, admin_setbalance
 )
 from utils import init_db
 
@@ -41,6 +42,10 @@ async def post_init(application):
         BotCommand("stats", "📊 Статистика бота"),
         BotCommand("check", "🔍 Проверить пользователя"),
         BotCommand("addbalance", "💰 Начислить баланс"),
+        BotCommand("setbalance", "⚙️ Установить баланс"),
+        BotCommand("ban", "🚫 Заблокировать пользователя"),
+        BotCommand("unban", "✅ Разблокировать пользователя"),
+        BotCommand("send", "📩 Отправить сообщение"),
         BotCommand("users", "📋 Список пользователей"),
         BotCommand("broadcast", "📢 Рассылка")
     ])
@@ -67,6 +72,10 @@ def main():
     application.add_handler(CommandHandler("stats", admin_stats))
     application.add_handler(CommandHandler("check", admin_check))
     application.add_handler(CommandHandler("addbalance", admin_addbalance))
+    application.add_handler(CommandHandler("setbalance", admin_setbalance))  # ← НОВОЕ
+    application.add_handler(CommandHandler("ban", admin_ban))                 # ← НОВОЕ
+    application.add_handler(CommandHandler("unban", admin_unban))             # ← НОВОЕ
+    application.add_handler(CommandHandler("send", admin_send))               # ← НОВОЕ
     application.add_handler(CommandHandler("users", admin_users))
     application.add_handler(CommandHandler("broadcast", admin_broadcast))
 

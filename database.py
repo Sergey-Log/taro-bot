@@ -15,6 +15,7 @@ def init_db():
             first_name TEXT,
             balance INTEGER DEFAULT 1,
             subscribed BOOLEAN DEFAULT 0,
+            banned BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')

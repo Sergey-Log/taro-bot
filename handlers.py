@@ -11,8 +11,8 @@ from utils import (
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice,
     get_card_image_path, increment_reading_count, get_reading_count,
-    create_sbp_payment, check_payment_status,
-    get_all_users, get_total_users_count, get_total_readings_count
+    # 🔧 АДМИН-ПАНЕЛЬ - НОВЫЕ ФУНКЦИИ
+    ban_user, unban_user, is_banned, set_balance
 )
 
 # ============================================================================
@@ -215,6 +215,163 @@ async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # ============================================================================
+# 🔧 АДМИН-ПАНЕЛЬ - НОВЫЕ КОМАНДЫ
+# ============================================================================
+
+async def admin_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🚫 Заблокировать пользователя (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 1:
+        await update.message.reply_text(
+            "❌ Использование: /ban <user_id>\n"
+            "Пример: /ban 123456789"
+        )
+        return
+    
+    try:
+        target_user_id = int(context.args[0])
+        
+        if ban_user(target_user_id):
+            message = f"✅ Пользователь {target_user_id} заблокирован.\n\n🚫 Он больше не сможет использовать бота."
+            
+            # Уведомить пользователя
+            try:
+                await context.bot.send_message(
+                    chat_id=target_user_id,
+                    text="🚫 Ваш доступ к боту ограничен.\n\nПо вопросам: @jobphone_admin"
+                )
+            except:
+                pass
+            
+            await update.message.reply_text(message)
+        else:
+            await update.message.reply_text(f"❌ Пользователь {target_user_id} не найден.")
+            
+    except ValueError:
+        await update.message.reply_text("❌ Неверный формат user_id (должно быть число)")
+
+async def admin_unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """✅ Разблокировать пользователя (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 1:
+        await update.message.reply_text(
+            "❌ Использование: /unban <user_id>\n"
+            "Пример: /unban 123456789"
+        )
+        return
+    
+    try:
+        target_user_id = int(context.args[0])
+        
+        if unban_user(target_user_id):
+            message = f"✅ Пользователь {target_user_id} разблокирован.\n\n✨ Доступ восстановлен."
+            
+            # Уведомить пользователя
+            try:
+                await context.bot.send_message(
+                    chat_id=target_user_id,
+                    text="✅ Ваш доступ к боту восстановлен!\n\nПриятного пользования! 💫"
+                )
+            except:
+                pass
+            
+            await update.message.reply_text(message)
+        else:
+            await update.message.reply_text(f"❌ Пользователь {target_user_id} не найден.")
+            
+    except ValueError:
+        await update.message.reply_text("❌ Неверный формат user_id (должно быть число)")
+
+async def admin_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📩 Отправить личное сообщение пользователю (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text(
+            "❌ Использование: /send <user_id> <текст сообщения>\n"
+            "Пример: /send 123456789 Привет! У нас акция!"
+        )
+        return
+    
+    try:
+        target_user_id = int(context.args[0])
+        message_text = " ".join(context.args[1:])
+        
+        # Отправить сообщение
+        await context.bot.send_message(
+            chat_id=target_user_id,
+            text=f"📩 Сообщение от администратора:\n\n{message_text}"
+        )
+        
+        await update.message.reply_text(f"✅ Сообщение отправлено пользователю {target_user_id}!")
+        
+    except ValueError:
+        await update.message.reply_text("❌ Неверный формат user_id (должно быть число)")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Ошибка отправки: {e}\n\nВозможно, пользователь заблокировал бота.")
+
+async def admin_setbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """💰 Установить баланс пользователю (только для админа)"""
+    user = update.effective_user
+    
+    if not is_admin(user.id, user.username):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text(
+            "❌ Использование: /setbalance <user_id> <amount>\n"
+            "Пример: /setbalance 123456789 10"
+        )
+        return
+    
+    try:
+        target_user_id = int(context.args[0])
+        amount = int(context.args[1])
+        
+        if amount < 0:
+            await update.message.reply_text("❌ Баланс не может быть отрицательным")
+            return
+        
+        if set_balance(target_user_id, amount):
+            message = (
+                f"✅ Баланс установлен!\n\n"
+                f"👤 Пользователь: {target_user_id}\n"
+                f"💰 Новый баланс: {amount} раскладов\n"
+                f"📅 Дата: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+            )
+            
+            await update.message.reply_text(message)
+            
+            # Уведомить пользователя
+            try:
+                await context.bot.send_message(
+                    chat_id=target_user_id,
+                    text=f"💫 Ваш баланс обновлён администратором!\n\n🎴 Доступно раскладов: {amount}"
+                )
+            except:
+                pass
+        else:
+            await update.message.reply_text(f"❌ Пользователь {target_user_id} не найден.")
+            
+    except ValueError:
+        await update.message.reply_text("❌ Неверный формат (user_id и amount должны быть числами)")
+
+# ============================================================================
 # ОСНОВНЫЕ ФУНКЦИИ БОТА (без изменений)
 # ============================================================================
 
@@ -222,8 +379,15 @@ ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE = ra
 
 async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    add_user(user.id, user.username, user.first_name)
     
+    # 🔧 ПРОВЕРКА БАНА
+    if is_banned(user.id):
+        await update.message.reply_text(
+            "🚫 Ваш доступ к боту ограничен.\n\n"
+            "По вопросам: @jobphone_admin"
+        )
+        return ConversationHandler.END
+
     if context.args:
         try:
             referrer_id = int(context.args[0])
@@ -672,6 +836,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     user_id = query.from_user.id
+    
+    # 🔧 ПРОВЕРКА БАНА
+    if is_banned(user_id):
+        await query.edit_message_text(
+            text="🚫 Ваш доступ к боту ограничен.\n\nПо вопросам: @jobphone_admin"
+        )
+        return
+    
     
     if query.data == 'back_to_spread_choice':
         await back_to_spread_choice(update, context)

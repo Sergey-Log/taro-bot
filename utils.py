@@ -20,6 +20,7 @@ def init_db():
         first_name TEXT,
         balance INTEGER DEFAULT 1,
         subscribed BOOLEAN DEFAULT 0,
+        banned BOOLEAN DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     ''')
@@ -861,3 +862,45 @@ def get_user_by_username(username):
             'balance': result[3]
         }
     return None
+
+
+
+# ============================================================================
+# 🔧 АДМИН-ПАНЕЛЬ - ФУНКЦИИ БЛОКИРОВКИ
+# ============================================================================
+
+def ban_user(user_id):
+    """Заблокировать пользователя"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET banned = 1 WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+    return cursor.rowcount > 0
+
+def unban_user(user_id):
+    """Разблокировать пользователя"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET banned = 0 WHERE user_id = ?', (user_id,))
+    conn.commit()
+    conn.close()
+    return cursor.rowcount > 0
+
+def is_banned(user_id):
+    """Проверить, заблокирован ли пользователь"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('SELECT banned FROM users WHERE user_id = ?', (user_id,))
+    result = cursor.fetchone()
+    conn.close()
+    return result[0] if result else False
+
+def set_balance(user_id, amount):
+    """Установить баланс (не добавить, а именно установить)"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET balance = ? WHERE user_id = ?', (amount, user_id))
+    conn.commit()
+    conn.close()
+    return cursor.rowcount > 0
