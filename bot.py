@@ -9,7 +9,8 @@ from handlers import (
     daily_command, balance_command, help_command, menu_command,
     reading_step_1_handler, reading_step_2_handler, account_command_handler,
     # 🔧 АДМИН-ПАНЕЛЬ
-    admin_stats, admin_users, admin_setbalance, admin_ban, admin_unban, admin_send
+    admin_stats, admin_check, admin_addbalance, admin_setbalance,
+    admin_ban, admin_unban, admin_send, admin_users, admin_broadcast
 )
 from utils import init_db
 
@@ -68,13 +69,14 @@ def main():
     application.add_handler(CommandHandler("account", account_command_handler))
 
     # 🔧 АДМИН-ПАНЕЛЬ - РЕГИСТРАЦИЯ КОМАНД
+    # 🔧 АДМИН-ПАНЕЛЬ
     application.add_handler(CommandHandler("stats", admin_stats))
     application.add_handler(CommandHandler("check", admin_check))
     application.add_handler(CommandHandler("addbalance", admin_addbalance))
-    application.add_handler(CommandHandler("setbalance", admin_setbalance))  # ← НОВОЕ
-    application.add_handler(CommandHandler("ban", admin_ban))                 # ← НОВОЕ
-    application.add_handler(CommandHandler("unban", admin_unban))             # ← НОВОЕ
-    application.add_handler(CommandHandler("send", admin_send))               # ← НОВОЕ
+    application.add_handler(CommandHandler("setbalance", admin_setbalance))
+    application.add_handler(CommandHandler("ban", admin_ban))
+    application.add_handler(CommandHandler("unban", admin_unban))
+    application.add_handler(CommandHandler("send", admin_send))
     application.add_handler(CommandHandler("users", admin_users))
     application.add_handler(CommandHandler("broadcast", admin_broadcast))
 

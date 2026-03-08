@@ -1382,3 +1382,206 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def account_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await account_command(update, context)
+
+
+# ============================================================================
+# 🔧 АДМИН-ПАНЕЛЬ - КОМАНДЫ
+# ============================================================================
+
+async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📊 Статистика бота"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM users')
+    total_users = cursor.fetchone()[0]
+    cursor.execute('SELECT SUM(total_readings) FROM reading_stats')
+    total_readings = cursor.fetchone()[0] or 0
+    conn.close()
+    
+    await update.message.reply_text(
+        f"📊 СТАТИСТИКА БОТА 📊\n\n"
+        f"👥 Всего пользователей: {total_users}\n"
+        f"🎴 Всего раскладов сделано: {total_readings}"
+    )
+
+async def admin_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🔍 Проверка пользователя"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("❌ Использование: /check <user_id>")
+        return
+    
+    try:
+        uid = int(context.args[0])
+        balance = get_balance(uid)
+        udata = get_user_data(uid)
+        await update.message.reply_text(
+            f"🔍 ПОЛЬЗОВАТЕЛЬ {uid}\n"
+            f"👤 Имя: {udata['name'] if udata else 'Не указан'}\n"
+            f"⚖️ Баланс: {balance}"
+        )
+    except:
+        await update.message.reply_text("❌ Ошибка: неверный user_id")
+
+async def admin_addbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """💰 Добавить к балансу"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("❌ Использование: /addbalance <user_id> <amount>")
+        return
+    
+    try:
+        uid, amount = int(context.args[0]), int(context.args[1])
+        increase_balance(uid, amount)
+        await update.message.reply_text(f"✅ +{amount} к балансу пользователя {uid}")
+    except:
+        await update.message.reply_text("❌ Ошибка формата")
+
+async def admin_setbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """⚙️ Установить баланс (не добавить)"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("❌ Использование: /setbalance <user_id> <amount>")
+        return
+    
+    try:
+        uid, amount = int(context.args[0]), int(context.args[1])
+        conn = sqlite3.connect('tarot_bot.db')
+        cursor = conn.cursor()
+        cursor.execute('UPDATE users SET balance = ? WHERE user_id = ?', (amount, uid))
+        conn.commit()
+        conn.close()
+        await update.message.reply_text(f"✅ Баланс пользователя {uid} установлен: {amount}")
+    except:
+        await update.message.reply_text("❌ Ошибка: пользователь не найден или неверный формат")
+
+async def admin_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """🚫 Заблокировать пользователя"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("❌ Использование: /ban <user_id>")
+        return
+    
+    try:
+        uid = int(context.args[0])
+        conn = sqlite3.connect('tarot_bot.db')
+        cursor = conn.cursor()
+        # Добавляем колонку если нет
+        try:
+            cursor.execute('ALTER TABLE users ADD COLUMN banned BOOLEAN DEFAULT 0')
+        except:
+            pass
+        cursor.execute('UPDATE users SET banned = 1 WHERE user_id = ?', (uid,))
+        conn.commit()
+        conn.close()
+        await update.message.reply_text(f"✅ Пользователь {uid} заблокирован")
+    except:
+        await update.message.reply_text("❌ Ошибка")
+
+async def admin_unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """✅ Разблокировать пользователя"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("❌ Использование: /unban <user_id>")
+        return
+    
+    try:
+        uid = int(context.args[0])
+        conn = sqlite3.connect('tarot_bot.db')
+        cursor = conn.cursor()
+        cursor.execute('UPDATE users SET banned = 0 WHERE user_id = ?', (uid,))
+        conn.commit()
+        conn.close()
+        await update.message.reply_text(f"✅ Пользователь {uid} разблокирован")
+    except:
+        await update.message.reply_text("❌ Ошибка")
+
+async def admin_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📩 Отправить сообщение пользователю"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("❌ Использование: /send <user_id> <текст>")
+        return
+    
+    try:
+        uid = int(context.args[0])
+        text = " ".join(context.args[1:])
+        await context.bot.send_message(uid, f"📩 От админа:\n\n{text}")
+        await update.message.reply_text(f"✅ Сообщение отправлено пользователю {uid}")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Ошибка: {e}")
+
+async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📋 Список пользователей"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT user_id, username, first_name, balance FROM users LIMIT 50')
+    users = cursor.fetchall()
+    conn.close()
+    
+    msg = "📋 ПОЛЬЗОВАТЕЛИ:\n\n"
+    for uid, uname, fname, bal in users:
+        msg += f"• {fname} (@{uname or 'no'}) — ID: {uid} — Баланс: {bal}\n"
+    await update.message.reply_text(msg)
+
+async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """📢 Рассылка всем"""
+    user = update.effective_user
+    if not is_admin(user.id):
+        await update.message.reply_text("❌ Доступ только для администратора")
+        return
+    
+    if not context.args:
+        await update.message.reply_text("❌ Использование: /broadcast <текст>")
+        return
+    
+    text = " ".join(context.args)
+    conn = sqlite3.connect('tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT user_id FROM users')
+    uids = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    ok, fail = 0, 0
+    for uid in uids:
+        try:
+            await context.bot.send_message(uid, f"📢 {text}")
+            ok += 1
+        except:
+            fail += 1
+    
+    await update.message.reply_text(f"✅ Рассылка: {ok} успешно, {fail} ошибок")
