@@ -19,18 +19,14 @@ from utils import (
 # 🔧 АДМИН-ПАНЕЛЬ - НАСТРОЙКИ
 # ============================================================================
 
-# ЗАМЕНИТЕ НА ВАШ USER_ID (можно узнать через @userinfobot в Telegram)
-ADMIN_ID = 891543067  # ← Впишите сюда ваш числовой ID
-
-# Имя пользователя админа для проверки
-ADMIN_USERNAME = "jobphone_admin"
+ADMIN_ID = 891543067  # Ваш ID
 
 def is_admin(user_id, username=None):
     """Проверка, является ли пользователь админом"""
-    return user_id == ADMIN_ID  # ✅ Только по ID
+    return user_id == ADMIN_ID
 
 # ============================================================================
-# 🔧 АДМИН-КОМАНДЫ
+# 🔧 АДМИН-ПАНЕЛЬ - КОМАНДЫ
 # ============================================================================
 
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -125,7 +121,6 @@ async def admin_addbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await update.message.reply_text(message)
         
-        # Уведомить пользователя
         try:
             await context.bot.send_message(
                 chat_id=target_user_id,
@@ -197,7 +192,6 @@ async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except:
             fail_count += 1
         
-        # Обновляем статус каждые 10 пользователей
         if success_count % 10 == 0:
             try:
                 await context.bot.edit_message_text(
@@ -213,10 +207,6 @@ async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
         chat_id=status_message.chat_id,
         message_id=status_message.message_id
     )
-
-# ============================================================================
-# 🔧 АДМИН-ПАНЕЛЬ - НОВЫЕ КОМАНДЫ
-# ============================================================================
 
 async def admin_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """🚫 Заблокировать пользователя (только для админа)"""
@@ -239,7 +229,6 @@ async def admin_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if ban_user(target_user_id):
             message = f"✅ Пользователь {target_user_id} заблокирован.\n\n🚫 Он больше не сможет использовать бота."
             
-            # Уведомить пользователя
             try:
                 await context.bot.send_message(
                     chat_id=target_user_id,
@@ -276,7 +265,6 @@ async def admin_unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if unban_user(target_user_id):
             message = f"✅ Пользователь {target_user_id} разблокирован.\n\n✨ Доступ восстановлен."
             
-            # Уведомить пользователя
             try:
                 await context.bot.send_message(
                     chat_id=target_user_id,
@@ -311,7 +299,6 @@ async def admin_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
         target_user_id = int(context.args[0])
         message_text = " ".join(context.args[1:])
         
-        # Отправить сообщение
         await context.bot.send_message(
             chat_id=target_user_id,
             text=f"📩 Сообщение от администратора:\n\n{message_text}"
@@ -357,7 +344,6 @@ async def admin_setbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             await update.message.reply_text(message)
             
-            # Уведомить пользователя
             try:
                 await context.bot.send_message(
                     chat_id=target_user_id,
@@ -370,6 +356,7 @@ async def admin_setbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
     except ValueError:
         await update.message.reply_text("❌ Неверный формат (user_id и amount должны быть числами)")
+
 
 # ============================================================================
 # ОСНОВНЫЕ ФУНКЦИИ БОТА (без изменений)

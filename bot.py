@@ -8,9 +8,8 @@ from handlers import (
     start_handler, button_handler, history_command, terms_command,
     daily_command, balance_command, help_command, menu_command,
     reading_step_1_handler, reading_step_2_handler, account_command_handler,
-    # 🔧 АДМИН-ПАНЕЛЬ - НОВЫЕ КОМАНДЫ
-    admin_stats, admin_check, admin_addbalance, admin_users, admin_broadcast,
-    admin_ban, admin_unban, admin_send, admin_setbalance
+    # 🔧 АДМИН-ПАНЕЛЬ
+    admin_stats, admin_users, admin_setbalance, admin_ban, admin_unban, admin_send
 )
 from utils import init_db
 

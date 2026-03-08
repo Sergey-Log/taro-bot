@@ -864,14 +864,22 @@ def get_user_by_username(username):
     return None
 
 
+# ============================================================================
+# 🔧 АДМИН-ПАНЕЛЬ - ФУНКЦИЯ УСТАНОВКИ БАЛАНСА
+# ============================================================================
 
-# ============================================================================
-# 🔧 АДМИН-ПАНЕЛЬ - ФУНКЦИИ БЛОКИРОВКИ
-# ============================================================================
+def set_balance(user_id, amount):
+    """Установить баланс пользователю (не добавить, а именно установить)"""
+    conn = sqlite3.connect(DB_PATH if 'DB_PATH' in globals() else 'tarot_bot.db')
+    cursor = conn.cursor()
+    cursor.execute('UPDATE users SET balance = ? WHERE user_id = ?', (amount, user_id))
+    conn.commit()
+    conn.close()
+    return cursor.rowcount > 0
 
 def ban_user(user_id):
     """Заблокировать пользователя"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH if 'DB_PATH' in globals() else 'tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET banned = 1 WHERE user_id = ?', (user_id,))
     conn.commit()
@@ -880,7 +888,7 @@ def ban_user(user_id):
 
 def unban_user(user_id):
     """Разблокировать пользователя"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH if 'DB_PATH' in globals() else 'tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET banned = 0 WHERE user_id = ?', (user_id,))
     conn.commit()
@@ -889,18 +897,9 @@ def unban_user(user_id):
 
 def is_banned(user_id):
     """Проверить, заблокирован ли пользователь"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH if 'DB_PATH' in globals() else 'tarot_bot.db')
     cursor = conn.cursor()
     cursor.execute('SELECT banned FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
     conn.close()
     return result[0] if result else False
-
-def set_balance(user_id, amount):
-    """Установить баланс (не добавить, а именно установить)"""
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('UPDATE users SET balance = ? WHERE user_id = ?', (amount, user_id))
-    conn.commit()
-    conn.close()
-    return cursor.rowcount > 0
