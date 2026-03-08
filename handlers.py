@@ -11,15 +11,16 @@ from utils import (
     check_subscribed, can_get_daily_card, save_daily_card, get_daily_card,
     format_daily_card, format_reading_intro, format_reading_cards, format_reading_advice,
     get_card_image_path, increment_reading_count, get_reading_count,
-    # 🔧 АДМИН-ПАНЕЛЬ - НОВЫЕ ФУНКЦИИ
-    ban_user, unban_user, is_banned, set_balance
+    # 🔧 АДМИН-ПАНЕЛЬ - ФУНКЦИИ ИЗ UTILS
+    get_all_users, get_total_users_count, get_total_readings_count,
+    set_balance, ban_user, unban_user, is_banned
 )
 
 # ============================================================================
 # 🔧 АДМИН-ПАНЕЛЬ - НАСТРОЙКИ
 # ============================================================================
 
-ADMIN_ID = 891543067  # Ваш ID
+ADMIN_ID = 891543067  # Ваш Telegram user_id
 
 def is_admin(user_id, username=None):
     """Проверка, является ли пользователь админом"""
@@ -32,7 +33,6 @@ def is_admin(user_id, username=None):
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """📊 Статистика бота (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -52,7 +52,6 @@ async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """🔍 Проверка баланса пользователя (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -89,7 +88,6 @@ async def admin_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_addbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """💰 Начислить баланс пользователю (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -109,7 +107,6 @@ async def admin_addbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("❌ Сумма должна быть больше 0")
             return
         
-        from utils import increase_balance
         increase_balance(target_user_id, amount)
         
         message = (
@@ -135,7 +132,6 @@ async def admin_addbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """📋 Список всех пользователей (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -158,7 +154,6 @@ async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """📢 Рассылка всем пользователям (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -211,7 +206,6 @@ async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """🚫 Заблокировать пользователя (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -247,7 +241,6 @@ async def admin_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """✅ Разблокировать пользователя (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -283,7 +276,6 @@ async def admin_unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """📩 Отправить личное сообщение пользователю (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -314,7 +306,6 @@ async def admin_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_setbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """💰 Установить баланс пользователю (только для админа)"""
     user = update.effective_user
-    
     if not is_admin(user.id, user.username):
         await update.message.reply_text("❌ Доступ только для администратора")
         return
@@ -357,9 +348,8 @@ async def admin_setbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except ValueError:
         await update.message.reply_text("❌ Неверный формат (user_id и amount должны быть числами)")
 
-
 # ============================================================================
-# ОСНОВНЫЕ ФУНКЦИИ БОТА (без изменений)
+# ОСНОВНЫЕ ФУНКЦИИ БОТА
 # ============================================================================
 
 ASKING_NAME, ASKING_BIRTHDATE, READING_INTRO, READING_CARDS, READING_ADVICE = range(5)
@@ -374,7 +364,9 @@ async def _start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "По вопросам: @jobphone_admin"
         )
         return ConversationHandler.END
-
+    
+    add_user(user.id, user.username, user.first_name)
+    
     if context.args:
         try:
             referrer_id = int(context.args[0])
@@ -511,16 +503,16 @@ async def history_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def terms_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
-        "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
-        "\n💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+        "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n\n"
+        "💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
         "Расклады Таро предоставляются в развлекательных целях.\n"
-        "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n"
-        "\n✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+        "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n\n"
+        "✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
         "• Оплата добровольная и необязательная.\n"
         "• Расклады носят развлекательный характер.\n"
         "• Вы совершаете платёж по собственной воле без принуждения.\n"
-        "• Возврат средств не предусмотрен (добровольный донат).\n"
-        "\n✨ Спасибо за поддержку проекта! 💫"
+        "• Возврат средств не предусмотрен (добровольный донат).\n\n"
+        "✨ Спасибо за поддержку проекта! 💫"
     )
     await update.message.reply_text(text=message)
 
@@ -569,9 +561,9 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     balance = get_balance(user_id)
     message = (
-        f"⚖️ ВАШ ТЕКУЩИЙ БАЛАНС ⚖️\n"
-        f"\n🔮 Доступно раскладов: {balance}\n"
-        f"\n✨ Как получить больше раскладов:\n"
+        f"⚖️ ВАШ ТЕКУЩИЙ БАЛАНС ⚖️\n\n"
+        f"🔮 Доступно раскладов: {balance}\n\n"
+        f"✨ Как получить больше раскладов:\n"
         f"• Пригласите друга — +1 расклад 🎁\n"
         f"• Подпишитесь на канал — +3 расклада 📺\n"
         f"• Купите пакет раскладов со скидкой 💳"
@@ -585,22 +577,22 @@ async def balance_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message = (
-        "❓ ПОМОЩЬ ❓\n"
-        "\n✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
+        "❓ ПОМОЩЬ ❓\n\n"
+        "✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
         "• 🎴 Сделать расклад — подробный расклад из 3+ карт (списывается с баланса)\n"
         "• 🗄️ Мои расклады — сохраните результат в одну из 3 ячеек\n"
-        "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день, в меню «Сделать расклад»)\n"
-        "\n🗄️ СОХРАНЕНИЕ РАСКЛАДОВ:\n"
+        "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день, в меню «Сделать расклад»)\n\n"
+        "🗄️ СОХРАНЕНИЕ РАСКЛАДОВ:\n"
         "• У вас есть 3 ячейки для сохранения раскладов.\n"
         "• Расклады НЕ сохраняются автоматически — только по вашему выбору.\n"
-        "• Если все ячейки заняты — сначала удалите старый расклад.\n"
-        "\n⚖️ БАЛАНС:\n"
+        "• Если все ячейки заняты — сначала удалите старый расклад.\n\n"
+        "⚖️ БАЛАНС:\n"
         "• При регистрации: 1 бесплатный расклад.\n"
         "• 🌅 Карта дня — всегда бесплатно, 1 раз в день.\n"
         "• За друга: +1 расклад.\n"
         "• За подписку: +3 расклада.\n"
-        "• Покупка пакетов со скидкой до 15%.\n"
-        "\n💳 ОПЛАТА:\n"
+        "• Покупка пакетов со скидкой до 15%.\n\n"
+        "💳 ОПЛАТА:\n"
         "• СБП — автоматическое начисление ⚡\n"
         "• Банковская карта — ручная проверка скриншота ⏳\n"
         "• Подробнее об условиях: /terms"
@@ -621,10 +613,10 @@ async def account_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reading_count = get_reading_count(user_id)
     
     message = (
-        f"👤 ВАШ АККАУНТ 👤\n"
-        f"\n✨ Имя: {user_data['name']}\n"
-        f"📅 Дата рождения: {user_data.get('birthdate', 'Не указана')}\n"
-        f"\n⚖️ Баланс: {balance} раскладов\n"
+        f"👤 ВАШ АККАУНТ 👤\n\n"
+        f"✨ Имя: {user_data['name']}\n"
+        f"📅 Дата рождения: {user_data.get('birthdate', 'Не указана')}\n\n"
+        f"⚖️ Баланс: {balance} раскладов\n"
         f"🎴 Всего раскладов сделано: {reading_count}\n"
         f"👥 Приглашено друзей: {referral_count}\n"
     )
@@ -831,7 +823,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    
     if query.data == 'back_to_spread_choice':
         await back_to_spread_choice(update, context)
         return
@@ -903,10 +894,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reading_count = get_reading_count(user_id)
         
         message = (
-            f"👤 ВАШ АККАУНТ 👤\n"
-            f"\n✨ Имя: {user_data['name']}\n"
-            f"📅 Дата рождения: {user_data.get('birthdate', 'Не указана')}\n"
-            f"\n⚖️ Баланс: {balance} раскладов\n"
+            f"👤 ВАШ АККАУНТ 👤\n\n"
+            f"✨ Имя: {user_data['name']}\n"
+            f"📅 Дата рождения: {user_data.get('birthdate', 'Не указана')}\n\n"
+            f"⚖️ Баланс: {balance} раскладов\n"
             f"🎴 Всего раскладов сделано: {reading_count}\n"
             f"👥 Приглашено друзей: {referral_count}\n"
         )
@@ -1014,9 +1005,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if query.data == 'balance':
         balance = get_balance(user_id)
         message = (
-            f"⚖️ ВАШ ТЕКУЩИЙ БАЛАНС ⚖️\n"
-            f"\n🔮 Доступно раскладов: {balance}\n"
-            f"\n✨ Как получить больше раскладов:\n"
+            f"⚖️ ВАШ ТЕКУЩИЙ БАЛАНС ⚖️\n\n"
+            f"🔮 Доступно раскладов: {balance}\n\n"
+            f"✨ Как получить больше раскладов:\n"
             f"• Пригласите друга — +1 расклад 🎁\n"
             f"• Подпишитесь на канал — +3 расклада 📺\n"
             f"• Купите пакет раскладов со скидкой 💳"
@@ -1031,9 +1022,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if query.data == 'buy_packs':
         message = (
-            "💳 СПОСОБЫ ОПЛАТЫ 💳\n"
-            "\nВыберите удобный способ:\n"
-            "\n⚡ СБП — автоматическое начисление (рекомендуется)\n"
+            "💳 СПОСОБЫ ОПЛАТЫ 💳\n\n"
+            "Выберите удобный способ:\n\n"
+            "⚡ СБП — автоматическое начисление (рекомендуется)\n"
             "🏦 Банковская карта — ручная проверка скриншота ⏳\n"
         )
         keyboard = [
@@ -1047,9 +1038,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if query.data == 'sbp_packs':
         message = (
-            "💳 ПАКЕТЫ РАСКЛАДОВ (СБП) 💳\n"
-            "\n✨ Выберите пакет со скидкой:\n"
-            "\n🎴 1 расклад — 100 ₽\n"
+            "💳 ПАКЕТЫ РАСКЛАДОВ (СБП) 💳\n\n"
+            "✨ Выберите пакет со скидкой:\n\n"
+            "🎴 1 расклад — 100 ₽\n"
             "🎴 3 расклада — 285 ₽ (-5%)\n"
             "🎴 7 раскладов — 630 ₽ (-10%)\n"
             "🎴 13 раскладов — 1 105 ₽ (-15%)\n"
@@ -1072,18 +1063,21 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         discounts = {1: "0%", 3: "5%", 7: "10%", 13: "15%"}
         discount = discounts[pack_size]
         
-        payment_data = await create_sbp_payment(user_id, price, pack_size)
+        try:
+            payment_data = await create_sbp_payment(user_id, price, pack_size)
+        except:
+            payment_data = None
         
         if payment_data and payment_data.get('payment_url'):
             message = (
-                f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n"
-                f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
-                f"\n📱 ОПЛАТА ЧЕРЕЗ СБП:\n"
+                f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n\n"
+                f"💰 Стоимость: {price} ₽ (скидка {discount})\n\n"
+                f"📱 ОПЛАТА ЧЕРЕЗ СБП:\n"
                 f"1. Нажмите кнопку «📱 Оплатить через СБП» ниже\n"
                 f"2. Отсканируйте QR-код в приложении вашего банка\n"
-                f"3. Нажмите «🔄 Проверить статус» после оплаты\n"
-                f"\n⏳ Платёж действителен 30 минут.\n"
-                f"\nℹ️ Подробнее об условиях оплаты: /terms"
+                f"3. Нажмите «🔄 Проверить статус» после оплаты\n\n"
+                f"⏳ Платёж действителен 30 минут.\n\n"
+                f"ℹ️ Подробнее об условиях оплаты: /terms"
             )
             keyboard = [
                 [InlineKeyboardButton("📱 Оплатить через СБП", url=payment_data['payment_url'])],
@@ -1093,9 +1087,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
         else:
             message = (
-                f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n"
-                f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
-                f"\n⚠️ Временно недоступно. Попробуйте оплату картой.\n"
+                f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n\n"
+                f"💰 Стоимость: {price} ₽ (скидка {discount})\n\n"
+                f"⚠️ Временно недоступно. Попробуйте оплату картой.\n"
             )
             keyboard = [
                 [InlineKeyboardButton("🏦 Банковская карта", callback_data='card_packs')],
@@ -1111,7 +1105,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await query.answer("⏳ Проверяем статус оплаты...")
         
-        payment_status = await check_payment_status(payment_id)
+        try:
+            payment_status = await check_payment_status(payment_id)
+        except:
+            payment_status = None
         
         if payment_status:
             if payment_status['status'] == 'PAID':
@@ -1139,15 +1136,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if query.data == 'card_packs':
         message = (
-            "💳 ПАКЕТЫ РАСКЛАДОВ 💳\n"
-            "\n✨ Выберите пакет со скидкой:\n"
-            "\n🎴 1 расклад — 100 ₽\n"
-            "   Идеально для разового гадания.\n"
-            "\n🎴 3 расклада — 285 ₽ (-5%)\n"
-            "   Экономия 15 ₽.\n"
-            "\n🎴 7 раскладов — 630 ₽ (-10%)\n"
-            "   Экономия 70 ₽.\n"
-            "\n🎴 13 раскладов — 1 105 ₽ (-15%)\n"
+            "💳 ПАКЕТЫ РАСКЛАДОВ 💳\n\n"
+            "✨ Выберите пакет со скидкой:\n\n"
+            "🎴 1 расклад — 100 ₽\n"
+            "   Идеально для разового гадания.\n\n"
+            "🎴 3 расклада — 285 ₽ (-5%)\n"
+            "   Экономия 15 ₽.\n\n"
+            "🎴 7 раскладов — 630 ₽ (-10%)\n"
+            "   Экономия 70 ₽.\n\n"
+            "🎴 13 раскладов — 1 105 ₽ (-15%)\n"
             "   Экономия 195 ₽."
         )
         keyboard = [
@@ -1169,18 +1166,18 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         discount = discounts[pack_size]
         
         message = (
-            f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n"
-            f"\n💰 Стоимость: {price} ₽ (скидка {discount})\n"
-            f"\n🏦 Реквизиты для оплаты:\n"
+            f"💳 ОПЛАТА ПАКЕТА: {pack_size} раскладов 💳\n\n"
+            f"💰 Стоимость: {price} ₽ (скидка {discount})\n\n"
+            f"🏦 Реквизиты для оплаты:\n"
             f"▫️ Банк: Райффайзенбанк.\n"
-            f"▫️ Номер карты: 2200300564643334 \n"
+            f"▫️ Номер карты: 2200300564643334\n"
             f"▫️ Получатель: Сергей Л.\n"
-            f"▫️ Сумма: {price} ₽.\n"
-            f"\n✅ ПОСЛЕ ОПЛАТЫ:\n"
+            f"▫️ Сумма: {price} ₽.\n\n"
+            f"✅ ПОСЛЕ ОПЛАТЫ:\n"
             f"1. Сделайте скриншот перевода.\n"
             f"2. Напишите в поддержку @jobphone_admin с пометкой «ОПЛАТА».\n"
-            f"3. Мы начислим {pack_size} раскладов на ваш баланс в течение 10 минут! ✨\n"
-            f"\nℹ️ Подробнее об условиях оплаты: /terms"
+            f"3. Мы начислим {pack_size} раскладов на ваш баланс в течение 10 минут! ✨\n\n"
+            f"ℹ️ Подробнее об условиях оплаты: /terms"
         )
         keyboard = [
             [InlineKeyboardButton("⬅️ Назад к пакетам", callback_data='card_packs')],
@@ -1193,16 +1190,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if query.data == 'terms' or query.data == 'terms_button':
         message = (
-            "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n"
-            "\n💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
+            "📄 УСЛОВИЯ ОПЛАТЫ И СОГЛАСИЕ 📄\n\n"
+            "💫 ВАЖНО: любая оплата в этом боте является ДОБРОВОЛЬНЫМ ДОНАТОМ.\n"
             "Расклады Таро предоставляются в развлекательных целях.\n"
-            "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n"
-            "\n✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
+            "Интерпретации карт не являются предсказанием будущего и не заменяют консультацию специалиста.\n\n"
+            "✅ Нажимая «Оплатить», вы соглашаетесь с тем, что:\n"
             "• Оплата добровольная и необязательная.\n"
             "• Расклады носят развлекательный характер.\n"
             "• Вы совершаете платёж по собственной воле без принуждения.\n"
-            "• Возврат средств не предусмотрен (добровольный донат).\n"
-            "\n✨ Спасибо за поддержку проекта! 💫"
+            "• Возврат средств не предусмотрен (добровольный донат).\n\n"
+            "✨ Спасибо за поддержку проекта! 💫"
         )
         keyboard = [[InlineKeyboardButton("⬅️ Назад к оплате", callback_data='buy_packs')]]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -1215,10 +1212,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             message = "✅ Вы уже подписаны на наш канал!\n💫 Бонус +3 расклада уже начислен."
         else:
             message = (
-                "📺 ПОДПИСКА НА КАНАЛ 📺\n"
-                "\nПодпишитесь на наш эзотерический канал и получите +3 бесплатных расклада!\n"
-                "\n✨ Канал: https://t.me/+5q7VJBPU4_QyMDky\n"
-                "\nПосле подписки нажмите кнопку ниже:"
+                "📺 ПОДПИСКА НА КАНАЛ 📺\n\n"
+                "Подпишитесь на наш эзотерический канал и получите +3 бесплатных расклада!\n\n"
+                "✨ Канал: https://t.me/+5q7VJBPU4_QyMDky\n\n"
+                "После подписки нажмите кнопку ниже:"
             )
         keyboard = [
             [InlineKeyboardButton("📺 Перейти в канал", url="https://t.me/+5q7VJBPU4_QyMDky")],
@@ -1257,22 +1254,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if query.data == 'help':
         message = (
-            "❓ ПОМОЩЬ ❓\n"
-            "\n✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
+            "❓ ПОМОЩЬ ❓\n\n"
+            "✨ КАК ПОЛЬЗОВАТЬСЯ БОТОМ:\n"
             "• 🎴 Сделать расклад — подробный расклад из 3+ карт (списывается с баланса)\n"
             "• 🗄️ Мои расклады — сохраните результат в одну из 3 ячеек\n"
-            "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день, в меню «Сделать расклад»)\n"
-            "\n🗄️ СОХРАНЕНИЕ РАСКЛАДОВ:\n"
+            "• 🌅 Карта дня — бесплатное гадание на сегодня (1 раз в день, в меню «Сделать расклад»)\n\n"
+            "🗄️ СОХРАНЕНИЕ РАСКЛАДОВ:\n"
             "• У вас есть 3 ячейки для сохранения раскладов.\n"
             "• Расклады НЕ сохраняются автоматически — только по вашему выбору.\n"
-            "• Если все ячейки заняты — сначала удалите старый расклад.\n"
-            "\n⚖️ БАЛАНС:\n"
+            "• Если все ячейки заняты — сначала удалите старый расклад.\n\n"
+            "⚖️ БАЛАНС:\n"
             "• При регистрации: 1 бесплатный расклад.\n"
             "• 🌅 Карта дня — всегда бесплатно, 1 раз в день.\n"
             "• За друга: +1 расклад.\n"
             "• За подписку: +3 расклада.\n"
-            "• Покупка пакетов со скидкой до 15%.\n"
-            "\n💳 ОПЛАТА:\n"
+            "• Покупка пакетов со скидкой до 15%.\n\n"
+            "💳 ОПЛАТА:\n"
             "• СБП — автоматическое начисление ⚡\n"
             "• Банковская карта — ручная проверка скриншота ⏳\n"
             "• Подробнее об условиях: /terms"
@@ -1382,206 +1379,3 @@ async def menu_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def account_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await account_command(update, context)
-
-
-# ============================================================================
-# 🔧 АДМИН-ПАНЕЛЬ - КОМАНДЫ
-# ============================================================================
-
-async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """📊 Статистика бота"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    conn = sqlite3.connect('tarot_bot.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(*) FROM users')
-    total_users = cursor.fetchone()[0]
-    cursor.execute('SELECT SUM(total_readings) FROM reading_stats')
-    total_readings = cursor.fetchone()[0] or 0
-    conn.close()
-    
-    await update.message.reply_text(
-        f"📊 СТАТИСТИКА БОТА 📊\n\n"
-        f"👥 Всего пользователей: {total_users}\n"
-        f"🎴 Всего раскладов сделано: {total_readings}"
-    )
-
-async def admin_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """🔍 Проверка пользователя"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    if not context.args:
-        await update.message.reply_text("❌ Использование: /check <user_id>")
-        return
-    
-    try:
-        uid = int(context.args[0])
-        balance = get_balance(uid)
-        udata = get_user_data(uid)
-        await update.message.reply_text(
-            f"🔍 ПОЛЬЗОВАТЕЛЬ {uid}\n"
-            f"👤 Имя: {udata['name'] if udata else 'Не указан'}\n"
-            f"⚖️ Баланс: {balance}"
-        )
-    except:
-        await update.message.reply_text("❌ Ошибка: неверный user_id")
-
-async def admin_addbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """💰 Добавить к балансу"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    if not context.args or len(context.args) < 2:
-        await update.message.reply_text("❌ Использование: /addbalance <user_id> <amount>")
-        return
-    
-    try:
-        uid, amount = int(context.args[0]), int(context.args[1])
-        increase_balance(uid, amount)
-        await update.message.reply_text(f"✅ +{amount} к балансу пользователя {uid}")
-    except:
-        await update.message.reply_text("❌ Ошибка формата")
-
-async def admin_setbalance(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """⚙️ Установить баланс (не добавить)"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    if not context.args or len(context.args) < 2:
-        await update.message.reply_text("❌ Использование: /setbalance <user_id> <amount>")
-        return
-    
-    try:
-        uid, amount = int(context.args[0]), int(context.args[1])
-        conn = sqlite3.connect('tarot_bot.db')
-        cursor = conn.cursor()
-        cursor.execute('UPDATE users SET balance = ? WHERE user_id = ?', (amount, uid))
-        conn.commit()
-        conn.close()
-        await update.message.reply_text(f"✅ Баланс пользователя {uid} установлен: {amount}")
-    except:
-        await update.message.reply_text("❌ Ошибка: пользователь не найден или неверный формат")
-
-async def admin_ban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """🚫 Заблокировать пользователя"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    if not context.args:
-        await update.message.reply_text("❌ Использование: /ban <user_id>")
-        return
-    
-    try:
-        uid = int(context.args[0])
-        conn = sqlite3.connect('tarot_bot.db')
-        cursor = conn.cursor()
-        # Добавляем колонку если нет
-        try:
-            cursor.execute('ALTER TABLE users ADD COLUMN banned BOOLEAN DEFAULT 0')
-        except:
-            pass
-        cursor.execute('UPDATE users SET banned = 1 WHERE user_id = ?', (uid,))
-        conn.commit()
-        conn.close()
-        await update.message.reply_text(f"✅ Пользователь {uid} заблокирован")
-    except:
-        await update.message.reply_text("❌ Ошибка")
-
-async def admin_unban(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """✅ Разблокировать пользователя"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    if not context.args:
-        await update.message.reply_text("❌ Использование: /unban <user_id>")
-        return
-    
-    try:
-        uid = int(context.args[0])
-        conn = sqlite3.connect('tarot_bot.db')
-        cursor = conn.cursor()
-        cursor.execute('UPDATE users SET banned = 0 WHERE user_id = ?', (uid,))
-        conn.commit()
-        conn.close()
-        await update.message.reply_text(f"✅ Пользователь {uid} разблокирован")
-    except:
-        await update.message.reply_text("❌ Ошибка")
-
-async def admin_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """📩 Отправить сообщение пользователю"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    if not context.args or len(context.args) < 2:
-        await update.message.reply_text("❌ Использование: /send <user_id> <текст>")
-        return
-    
-    try:
-        uid = int(context.args[0])
-        text = " ".join(context.args[1:])
-        await context.bot.send_message(uid, f"📩 От админа:\n\n{text}")
-        await update.message.reply_text(f"✅ Сообщение отправлено пользователю {uid}")
-    except Exception as e:
-        await update.message.reply_text(f"❌ Ошибка: {e}")
-
-async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """📋 Список пользователей"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    conn = sqlite3.connect('tarot_bot.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT user_id, username, first_name, balance FROM users LIMIT 50')
-    users = cursor.fetchall()
-    conn.close()
-    
-    msg = "📋 ПОЛЬЗОВАТЕЛИ:\n\n"
-    for uid, uname, fname, bal in users:
-        msg += f"• {fname} (@{uname or 'no'}) — ID: {uid} — Баланс: {bal}\n"
-    await update.message.reply_text(msg)
-
-async def admin_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """📢 Рассылка всем"""
-    user = update.effective_user
-    if not is_admin(user.id):
-        await update.message.reply_text("❌ Доступ только для администратора")
-        return
-    
-    if not context.args:
-        await update.message.reply_text("❌ Использование: /broadcast <текст>")
-        return
-    
-    text = " ".join(context.args)
-    conn = sqlite3.connect('tarot_bot.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT user_id FROM users')
-    uids = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    
-    ok, fail = 0, 0
-    for uid in uids:
-        try:
-            await context.bot.send_message(uid, f"📢 {text}")
-            ok += 1
-        except:
-            fail += 1
-    
-    await update.message.reply_text(f"✅ Рассылка: {ok} успешно, {fail} ошибок")
