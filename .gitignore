@@ -1,19 +1,39 @@
-# Игнорировать файл с токеном
-.env
-
-# Игнорировать базу данных
-*.db
-
-# Игнорировать кэш Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Игнорировать виртуальные окружения
-venv/
+*.so
+.Python
 env/
+venv/
 ENV/
+.venv
 
-# Игнорировать системные файлы
+# База данных
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Переменные окружения
+.env
+.env.local
+.env.*.local
+
+# Логи
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Docker
+docker-compose.override.yml

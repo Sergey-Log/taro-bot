@@ -1,8 +1,10 @@
 ﻿import sqlite3
+import os
+DB_PATH = os.getenv('DATABASE_PATH', 'tarot_bot.db')
 
 def init_db():
     """Инициализация базы данных"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
     # Таблица пользователей
@@ -81,7 +83,7 @@ def init_db():
 
 def add_user(user_id, username, first_name):
     """Добавить пользователя в базу"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('INSERT OR IGNORE INTO users (user_id, username, first_name, balance) VALUES (?, ?, ?, 1)', (user_id, username, first_name))
     cursor.execute('INSERT OR IGNORE INTO reading_stats (user_id) VALUES (?)', (user_id,))
@@ -90,7 +92,7 @@ def add_user(user_id, username, first_name):
 
 def get_balance(user_id):
     """Получить текущий баланс пользователя"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT balance FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
@@ -99,7 +101,7 @@ def get_balance(user_id):
 
 def decrease_balance(user_id, amount=1):
     """Уменьшить баланс на указанное количество"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET balance = balance - ? WHERE user_id = ? AND balance >= ?', (amount, user_id, amount))
     conn.commit()
@@ -108,7 +110,7 @@ def decrease_balance(user_id, amount=1):
 
 def increase_balance(user_id, amount=1):
     """Увеличить баланс на указанное количество"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET balance = balance + ? WHERE user_id = ?', (amount, user_id))
     conn.commit()
@@ -116,7 +118,7 @@ def increase_balance(user_id, amount=1):
 
 def add_referral(referrer_id, referred_id):
     """Добавить реферала (+1 к балансу реферера)"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT id FROM referrals WHERE referred_id = ?', (referred_id,))
     if cursor.fetchone():
@@ -130,7 +132,7 @@ def add_referral(referrer_id, referred_id):
 
 def mark_subscribed(user_id):
     """Отметить подписку на канал (+3 к балансу)"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('UPDATE users SET subscribed = 1, balance = balance + 3 WHERE user_id = ?', (user_id,))
     conn.commit()
@@ -139,7 +141,7 @@ def mark_subscribed(user_id):
 
 def check_subscribed(user_id):
     """Проверить, подписан ли пользователь на канал"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT subscribed FROM users WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
@@ -148,7 +150,7 @@ def check_subscribed(user_id):
 
 def get_saved_slots(user_id):
     """Получить список занятых ячеек пользователя"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT slot, timestamp FROM saved_readings WHERE user_id = ? ORDER BY slot ASC', (user_id,))
     results = cursor.fetchall()
@@ -157,7 +159,7 @@ def get_saved_slots(user_id):
 
 def save_reading(user_id, cards, interpretation, slot=None):
     """Сохранить расклад в ячейку"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     if slot is None:
         occupied = get_saved_slots(user_id).keys()
@@ -176,7 +178,7 @@ def save_reading(user_id, cards, interpretation, slot=None):
 
 def get_saved_reading(user_id, slot):
     """Получить сохранённый расклад из ячейки"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT cards, interpretation, timestamp FROM saved_readings WHERE user_id = ? AND slot = ?', (user_id, slot))
     result = cursor.fetchone()
@@ -185,7 +187,7 @@ def get_saved_reading(user_id, slot):
 
 def delete_saved_reading(user_id, slot):
     """Удалить расклад из ячейки"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM saved_readings WHERE user_id = ? AND slot = ?', (user_id, slot))
     conn.commit()
@@ -194,7 +196,7 @@ def delete_saved_reading(user_id, slot):
 
 def create_payment(user_id, amount_rub, pack_size, payment_id, crypto_currency, crypto_amount):
     """Создать запись о платеже"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO payments (user_id, amount_rub, pack_size, payment_id, crypto_currency, crypto_amount)
@@ -205,7 +207,7 @@ def create_payment(user_id, amount_rub, pack_size, payment_id, crypto_currency, 
 
 def complete_payment(payment_id, tx_hash):
     """Завершить платёж и начислить баланс"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT user_id, pack_size FROM payments WHERE payment_id = ? AND status = "waiting"', (payment_id,))
     result = cursor.fetchone()
@@ -222,7 +224,7 @@ def complete_payment(payment_id, tx_hash):
 
 def save_user_data(user_id, name, birthdate):
     """Сохранить/обновить данные пользователя"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         INSERT OR REPLACE INTO user_data (user_id, name, birthdate, updated_at)
@@ -233,7 +235,7 @@ def save_user_data(user_id, name, birthdate):
 
 def get_user_data(user_id):
     """Получить данные пользователя"""
-    conn = sqlite3.connect('tarot_bot.db')
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('SELECT name, birthdate FROM user_data WHERE user_id = ?', (user_id,))
     result = cursor.fetchone()
